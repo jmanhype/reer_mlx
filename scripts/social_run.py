@@ -7,43 +7,24 @@ Orchestrates data collection, REER mining, GEPA tuning, and content generation.
 """
 
 import asyncio
-import json
-import sys
-import subprocess
-from pathlib import Path
-from typing import Optional, List, Dict, Any
-import typer
-from rich.console import Console
-from rich.progress import (
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    BarColumn,
-    TimeElapsedColumn,
-)
-from rich.table import Table
-from rich.panel import Panel
-from rich.tree import Tree
-from rich.live import Live
-from rich import print as rprint
-from loguru import logger
-import time
 from datetime import datetime
+import json
+from pathlib import Path
+import sys
+import time
+from typing import Any
+
+from loguru import logger
+from rich.console import Console
+from rich.live import Live
+from rich.table import Table
+from rich.tree import Tree
+import typer
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from social import (
-    SocialContentPipeline,
-    SocialContentIdeator,
-    SocialContentComposer,
-    SocialContentOptimizer,
-    Platform,
-    ContentType,
-    ContentBrief,
-)
-from core import REERTraceStore, REERTrajectorySynthesizer, REERGEPATrainer
 
 app = typer.Typer(
     name="social-run",
@@ -70,13 +51,13 @@ def pipeline(
         "-o",
         help="Output directory for generated content",
     ),
-    stages: Optional[List[str]] = typer.Option(
+    stages: list[str] | None = typer.Option(
         None,
         "--stage",
         "-s",
         help="Specific stages to run (collect, mine, tune, generate)",
     ),
-    platforms: Optional[List[str]] = typer.Option(
+    platforms: list[str] | None = typer.Option(
         None, "--platform", "-p", help="Target platforms (can be used multiple times)"
     ),
     content_count: int = typer.Option(
@@ -166,7 +147,7 @@ def pipeline(
         # Display results
         _display_pipeline_results(results)
 
-        console.print(f"[green]✓ Pipeline execution completed successfully![/green]")
+        console.print("[green]✓ Pipeline execution completed successfully![/green]")
         console.print(f"[cyan]Results saved to:[/cyan] {output_dir}")
 
     except Exception as e:
@@ -176,16 +157,16 @@ def pipeline(
 
 
 async def _execute_pipeline(
-    config: Dict[str, Any],
-    stages: List[str],
+    config: dict[str, Any],
+    stages: list[str],
     output_dir: Path,
-    platforms: Optional[List[str]],
+    platforms: list[str] | None,
     content_count: int,
     skip_cache: bool,
     parallel_stages: bool,
     save_intermediates: bool,
     verbose: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Execute the social media pipeline."""
 
     results = {
@@ -205,7 +186,7 @@ async def _execute_pipeline(
     pipeline_table.add_column("Duration", style="yellow")
     pipeline_table.add_column("Output", style="magenta")
 
-    with Live(pipeline_table, refresh_per_second=1, console=console) as live:
+    with Live(pipeline_table, refresh_per_second=1, console=console):
 
         # Stage 1: Data Collection
         if "collect" in stages:
@@ -343,12 +324,12 @@ async def _execute_pipeline(
 
 
 async def _run_collection_stage(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     output_dir: Path,
-    platforms: Optional[List[str]],
+    platforms: list[str] | None,
     skip_cache: bool,
     verbose: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run data collection stage."""
 
     # Mock data collection
@@ -383,8 +364,8 @@ async def _run_collection_stage(
 
 
 async def _run_mining_stage(
-    config: Dict[str, Any], output_dir: Path, skip_cache: bool, verbose: bool
-) -> Dict[str, Any]:
+    config: dict[str, Any], output_dir: Path, skip_cache: bool, verbose: bool
+) -> dict[str, Any]:
     """Run REER mining stage."""
 
     # Mock REER mining
@@ -416,8 +397,8 @@ async def _run_mining_stage(
 
 
 async def _run_tuning_stage(
-    config: Dict[str, Any], output_dir: Path, skip_cache: bool, verbose: bool
-) -> Dict[str, Any]:
+    config: dict[str, Any], output_dir: Path, skip_cache: bool, verbose: bool
+) -> dict[str, Any]:
     """Run GEPA tuning stage."""
 
     # Mock GEPA tuning
@@ -445,12 +426,12 @@ async def _run_tuning_stage(
 
 
 async def _run_generation_stage(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     output_dir: Path,
-    platforms: Optional[List[str]],
+    platforms: list[str] | None,
     content_count: int,
     verbose: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run content generation stage."""
 
     # Mock content generation
@@ -492,7 +473,7 @@ async def _run_generation_stage(
     return result
 
 
-async def _save_pipeline_results(results: Dict[str, Any], output_dir: Path):
+async def _save_pipeline_results(results: dict[str, Any], output_dir: Path):
     """Save complete pipeline results."""
 
     results_file = output_dir / "pipeline_results.json"
@@ -535,9 +516,9 @@ async def _save_pipeline_results(results: Dict[str, Any], output_dir: Path):
 
 
 def _display_pipeline_config(
-    config: Dict[str, Any],
-    stages: List[str],
-    platforms: Optional[List[str]],
+    config: dict[str, Any],
+    stages: list[str],
+    platforms: list[str] | None,
     content_count: int,
     output_dir: Path,
 ):
@@ -581,7 +562,7 @@ def _display_pipeline_config(
     console.print()
 
 
-def _display_pipeline_results(results: Dict[str, Any]):
+def _display_pipeline_results(results: dict[str, Any]):
     """Display pipeline execution results."""
 
     # Summary table

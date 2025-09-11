@@ -8,43 +8,30 @@ Processes social media data to extract insights and patterns.
 
 import asyncio
 import json
-import sys
 from pathlib import Path
-from typing import Optional, List, Dict, Any
-import typer
+import sys
+from typing import Any
+
+from loguru import logger
 from rich.console import Console
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
     TextColumn,
-    BarColumn,
     TimeElapsedColumn,
 )
 from rich.table import Table
-from rich.panel import Panel
 from rich.tree import Tree
-from rich import print as rprint
-from loguru import logger
+import typer
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from core import REERTraceStore, REERTrajectorySynthesizer, REERCandidateScorer
+
+from core import REERCandidateScorer, REERTraceStore, REERTrajectorySynthesizer
 from core.trace_store import TraceRecord
-from core.integration import create_mining_service, IntegratedREERMiner
-from cli_common import (
-    get_mining_service,
-    with_mining_service,
-    with_lm_registry,
-    with_error_handling,
-    performance_monitor,
-    setup_cli_logging,
-    provider_option,
-    trace_store_option,
-    logging_level_option,
-)
-from social import Platform, ContentType
 
 app = typer.Typer(
     name="social-reer",
@@ -83,13 +70,13 @@ def mine(
     min_engagement: int = typer.Option(
         10, "--min-engagement", help="Minimum engagement threshold"
     ),
-    platforms: Optional[List[str]] = typer.Option(
+    platforms: list[str] | None = typer.Option(
         None,
         "--platform",
         "-p",
         help="Filter by platforms (can be used multiple times)",
     ),
-    content_types: Optional[List[str]] = typer.Option(
+    content_types: list[str] | None = typer.Option(
         None,
         "--content-type",
         "-c",
@@ -184,7 +171,7 @@ def mine(
         # Display results
         _display_mining_results(results)
 
-        console.print(f"[green]✓ REER mining completed successfully![/green]")
+        console.print("[green]✓ REER mining completed successfully![/green]")
         console.print(f"[cyan]Results saved to:[/cyan] {output_dir}")
 
     except Exception as e:
@@ -200,14 +187,14 @@ async def _run_reer_mining(
     algorithm: str,
     batch_size: int,
     min_engagement: int,
-    platforms: Optional[List[str]],
-    content_types: Optional[List[str]],
+    platforms: list[str] | None,
+    content_types: list[str] | None,
     extract_patterns: bool,
     synthesize_strategies: bool,
     score_candidates: bool,
     parallel_workers: int,
     verbose: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run the REER mining process."""
 
     results = {
@@ -370,7 +357,7 @@ async def _run_reer_mining(
     return results
 
 
-def _display_mining_results(results: Dict[str, Any]):
+def _display_mining_results(results: dict[str, Any]):
     """Display mining results in a formatted table."""
 
     results_table = Table(title="REER Mining Results")
@@ -391,7 +378,7 @@ def _display_mining_results(results: Dict[str, Any]):
 @app.command()
 def analyze(
     results_dir: Path = typer.Argument(..., help="Results directory to analyze"),
-    output_file: Optional[Path] = typer.Option(
+    output_file: Path | None = typer.Option(
         None, "--output", "-o", help="Output file for analysis report"
     ),
     include_charts: bool = typer.Option(
@@ -410,7 +397,7 @@ def analyze(
     patterns_file = results_dir / "extracted_patterns.json"
     strategies_file = results_dir / "synthesized_strategies.json"
     candidates_file = results_dir / "scored_candidates.json"
-    summary_file = results_dir / "mining_summary.json"
+    results_dir / "mining_summary.json"
 
     analysis = {}
 
@@ -432,7 +419,7 @@ def analyze(
                 else 0
             ),
             "platforms": list(
-                set(p.get("platform") for p in patterns if p.get("platform"))
+                {p.get("platform") for p in patterns if p.get("platform")}
             ),
         }
 
@@ -443,7 +430,7 @@ def analyze(
 
         analysis["strategies"] = {
             "total": len(strategies),
-            "types": list(set(s.get("type") for s in strategies if s.get("type"))),
+            "types": list({s.get("type") for s in strategies if s.get("type")}),
         }
 
     # Load and analyze candidates
@@ -454,7 +441,7 @@ def analyze(
         scores = [
             c.get("score", 0)
             for c in candidates
-            if isinstance(c.get("score"), (int, float))
+            if isinstance(c.get("score"), int | float)
         ]
         analysis["candidates"] = {
             "total": len(candidates),
@@ -473,7 +460,7 @@ def analyze(
         console.print(f"[green]Analysis saved to:[/green] {output_file}")
 
 
-def _display_analysis(analysis: Dict[str, Any]):
+def _display_analysis(analysis: dict[str, Any]):
     """Display analysis results."""
 
     tree = Tree("REER Mining Analysis")
@@ -513,7 +500,7 @@ def traces(
     action: str = typer.Option(
         "list", "--action", "-a", help="Action to perform (list, search, export)"
     ),
-    trace_id: Optional[str] = typer.Option(
+    trace_id: str | None = typer.Option(
         None, "--trace-id", help="Specific trace ID to query"
     ),
     limit: int = typer.Option(10, "--limit", "-l", help="Limit number of results"),
@@ -524,7 +511,7 @@ def traces(
         console.print(f"[red]Trace store not found:[/red] {trace_store}")
         raise typer.Exit(1)
 
-    store = REERTraceStore(str(trace_store))
+    REERTraceStore(str(trace_store))
 
     if action == "list":
         console.print(f"[cyan]Listing traces in:[/cyan] {trace_store}")
@@ -532,12 +519,12 @@ def traces(
         console.print("[yellow]Trace listing functionality coming soon...[/yellow]")
 
     elif action == "search":
-        console.print(f"[cyan]Searching traces...[/cyan]")
+        console.print("[cyan]Searching traces...[/cyan]")
         # Mock search functionality
         console.print("[yellow]Trace search functionality coming soon...[/yellow]")
 
     elif action == "export":
-        console.print(f"[cyan]Exporting traces...[/cyan]")
+        console.print("[cyan]Exporting traces...[/cyan]")
         # Mock export functionality
         console.print("[yellow]Trace export functionality coming soon...[/yellow]")
 

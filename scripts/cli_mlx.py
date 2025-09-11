@@ -7,51 +7,43 @@ fine-tuning, and inference operations for Apple Silicon.
 """
 
 import asyncio
+from datetime import datetime
 import json
-import sys
-import os
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Tuple
-import typer
+import sys
+from typing import Any
+
+from loguru import logger
 from rich.console import Console
+from rich.panel import Panel
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
     TextColumn,
-    BarColumn,
     TimeElapsedColumn,
 )
 from rich.table import Table
-from rich.panel import Panel
-from rich.tree import Tree
-from rich import print as rprint
-from loguru import logger
-import time
-from datetime import datetime
+import typer
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+from cli_common import (
+    display_model_info,
+    logging_level_option,
+    performance_monitor,
+    provider_option,
+    setup_cli_logging,
+    with_error_handling,
+    with_lm_registry,
+)
+
 from plugins import (
     MLXLanguageModelAdapter,
-    MLXModelFactory,
     MLXModelConfig,
-    MLXGenerationConfig,
-    load_llama_mlx,
-    load_mistral_mlx,
-)
-from plugins.lm_registry import LanguageModelRegistry, get_registry
-from cli_common import (
-    get_model_manager,
-    with_lm_registry,
-    with_error_handling,
-    performance_monitor,
-    setup_cli_logging,
-    provider_option,
-    logging_level_option,
-    init_cli_environment,
-    display_model_info,
+    MLXModelFactory,
 )
 
 app = typer.Typer(
@@ -82,7 +74,7 @@ def list_models(
     show_details: bool = typer.Option(
         False, "--details", help="Show detailed model information"
     ),
-    filter_type: Optional[str] = typer.Option(
+    filter_type: str | None = typer.Option(
         None, "--type", "-t", help="Filter by model type (llama, mistral, phi, etc.)"
     ),
     show_sizes: bool = typer.Option(
@@ -126,7 +118,7 @@ def list_models(
         _display_simple_models(model_dirs, show_sizes)
 
 
-def _display_simple_models(model_dirs: List[Path], show_sizes: bool):
+def _display_simple_models(model_dirs: list[Path], show_sizes: bool):
     """Display models in a simple table format."""
 
     models_table = Table(title="Available MLX Models")
@@ -185,7 +177,7 @@ def _display_simple_models(model_dirs: List[Path], show_sizes: bool):
     console.print(models_table)
 
 
-def _display_detailed_models(model_dirs: List[Path], show_sizes: bool):
+def _display_detailed_models(model_dirs: list[Path], show_sizes: bool):
     """Display models with detailed information."""
 
     for model_path in sorted(model_dirs):
@@ -227,29 +219,28 @@ def _detect_model_type(model_path: Path) -> str:
 
     if "llama" in model_name:
         return "Llama"
-    elif "mistral" in model_name:
+    if "mistral" in model_name:
         return "Mistral"
-    elif "phi" in model_name:
+    if "phi" in model_name:
         return "Phi"
-    elif "gemma" in model_name:
+    if "gemma" in model_name:
         return "Gemma"
-    elif "qwen" in model_name:
+    if "qwen" in model_name:
         return "Qwen"
-    else:
-        # Try to detect from config
-        config_file = model_path / "config.json"
-        if config_file.exists():
-            try:
-                with open(config_file) as f:
-                    config = json.load(f)
-                return config.get("model_type", "Unknown").title()
-            except:
-                pass
+    # Try to detect from config
+    config_file = model_path / "config.json"
+    if config_file.exists():
+        try:
+            with open(config_file) as f:
+                config = json.load(f)
+            return config.get("model_type", "Unknown").title()
+        except:
+            pass
 
-        return "Unknown"
+    return "Unknown"
 
 
-def _get_model_info(model_path: Path) -> Dict[str, Any]:
+def _get_model_info(model_path: Path) -> dict[str, Any]:
     """Get detailed information about a model."""
 
     info = {
@@ -309,10 +300,10 @@ def download(
     force: bool = typer.Option(
         False, "--force", "-f", help="Force re-download even if model exists"
     ),
-    quantize: Optional[str] = typer.Option(
+    quantize: str | None = typer.Option(
         None, "--quantize", "-q", help="Quantization format (4bit, 8bit, int4, int8)"
     ),
-    max_files: Optional[int] = typer.Option(
+    max_files: int | None = typer.Option(
         None, "--max-files", help="Maximum number of files to download"
     ),
     resume: bool = typer.Option(
@@ -359,7 +350,7 @@ def download(
             _download_model(model_name, local_model_path, quantize, max_files, resume)
         )
 
-        console.print(f"[green]✓ Model downloaded successfully![/green]")
+        console.print("[green]✓ Model downloaded successfully![/green]")
         console.print(f"[cyan]Location:[/cyan] {local_model_path}")
 
         # Verify download
@@ -381,8 +372,8 @@ def download(
 async def _download_model(
     model_name: str,
     local_path: Path,
-    quantize: Optional[str],
-    max_files: Optional[int],
+    quantize: str | None,
+    max_files: int | None,
     resume: bool,
 ):
     """Download model from Hugging Face Hub."""
@@ -427,7 +418,7 @@ async def _download_model(
         )
 
         # Download each file
-        for i, filename in enumerate(files_to_download):
+        for _i, filename in enumerate(files_to_download):
             progress.update(
                 download_task,
                 advance=80 / len(files_to_download),
@@ -516,7 +507,7 @@ def _verify_model_download(model_path: Path):
 @app.command()
 def load(
     model_path: Path = typer.Argument(..., help="Path to model directory"),
-    adapter_config: Optional[Path] = typer.Option(
+    adapter_config: Path | None = typer.Option(
         None, "--adapter-config", "-c", help="Path to adapter configuration file"
     ),
     device: str = typer.Option(
@@ -528,7 +519,7 @@ def load(
         "-p",
         help="Model precision (float16, float32, int8, int4)",
     ),
-    max_memory: Optional[str] = typer.Option(
+    max_memory: str | None = typer.Option(
         None, "--max-memory", help="Maximum memory usage (e.g., '8GB', '4GB')"
     ),
     test_generation: bool = typer.Option(
@@ -587,7 +578,7 @@ def load(
             _load_model(model_path, device, precision, max_memory, adapter_config)
         )
 
-        console.print(f"[green]✓ Model loaded successfully![/green]")
+        console.print("[green]✓ Model loaded successfully![/green]")
 
         # Test generation
         if test_generation:
@@ -603,8 +594,8 @@ async def _load_model(
     model_path: Path,
     device: str,
     precision: str,
-    max_memory: Optional[str],
-    adapter_config: Optional[Path],
+    max_memory: str | None,
+    adapter_config: Path | None,
 ) -> MLXLanguageModelAdapter:
     """Load MLX model with specified configuration."""
 
@@ -688,7 +679,7 @@ def quantize(
     group_size: int = typer.Option(
         64, "--group-size", "-g", help="Group size for quantization"
     ),
-    calibration_data: Optional[Path] = typer.Option(
+    calibration_data: Path | None = typer.Option(
         None, "--calibration-data", "-c", help="Calibration dataset for quantization"
     ),
     preserve_accuracy: bool = typer.Option(
@@ -751,7 +742,7 @@ def quantize(
             )
         )
 
-        console.print(f"[green]✓ Model quantized successfully![/green]")
+        console.print("[green]✓ Model quantized successfully![/green]")
         console.print(f"[cyan]Quantized model saved to:[/cyan] {output_path}")
 
         # Show size comparison
@@ -768,7 +759,7 @@ async def _quantize_model(
     output_path: Path,
     quantization: str,
     group_size: int,
-    calibration_data: Optional[Path],
+    calibration_data: Path | None,
     preserve_accuracy: bool,
 ):
     """Perform model quantization."""
@@ -878,16 +869,16 @@ def _show_size_comparison(original_path: Path, quantized_path: Path):
 @app.command()
 def benchmark(
     model_path: Path = typer.Argument(..., help="Path to model to benchmark"),
-    output_file: Optional[Path] = typer.Option(
+    output_file: Path | None = typer.Option(
         None, "--output", "-o", help="Output file for benchmark results"
     ),
-    batch_sizes: Optional[List[int]] = typer.Option(
+    batch_sizes: list[int] | None = typer.Option(
         None,
         "--batch-size",
         "-b",
         help="Batch sizes to test (can be used multiple times)",
     ),
-    sequence_lengths: Optional[List[int]] = typer.Option(
+    sequence_lengths: list[int] | None = typer.Option(
         None,
         "--sequence-length",
         "-s",
@@ -956,7 +947,7 @@ def benchmark(
                 json.dump(results, f, indent=2, default=str)
             console.print(f"[green]Benchmark results saved to:[/green] {output_file}")
 
-        console.print(f"[green]✓ Benchmark completed successfully![/green]")
+        console.print("[green]✓ Benchmark completed successfully![/green]")
 
     except Exception as e:
         logger.error(f"Benchmark failed: {e}")
@@ -966,12 +957,12 @@ def benchmark(
 
 async def _run_benchmark(
     model_path: Path,
-    batch_sizes: List[int],
-    sequence_lengths: List[int],
+    batch_sizes: list[int],
+    sequence_lengths: list[int],
     iterations: int,
     warmup_iterations: int,
     include_memory_stats: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run comprehensive model benchmark."""
 
     results = {
@@ -1045,7 +1036,7 @@ async def _run_single_benchmark_test(
     iterations: int,
     warmup_iterations: int,
     include_memory_stats: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run a single benchmark test configuration."""
 
     import random
@@ -1088,7 +1079,7 @@ async def _run_single_benchmark_test(
     return result
 
 
-def _calculate_benchmark_summary(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _calculate_benchmark_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     """Calculate summary statistics across all benchmark results."""
 
     if not results:
@@ -1131,7 +1122,7 @@ def _calculate_benchmark_summary(results: List[Dict[str, Any]]) -> Dict[str, Any
     return summary
 
 
-def _display_benchmark_results(results: Dict[str, Any]):
+def _display_benchmark_results(results: dict[str, Any]):
     """Display benchmark results in formatted tables."""
 
     # Results table
@@ -1216,7 +1207,7 @@ def info(model_manager=None, log_level: str = logging_level_option()):
     console.print(info_table)
 
     # Model directory info
-    console.print(f"\n[cyan]Model Directories:[/cyan]")
+    console.print("\n[cyan]Model Directories:[/cyan]")
 
     dirs_table = Table()
     dirs_table.add_column("Directory", style="cyan")
@@ -1238,7 +1229,7 @@ def info(model_manager=None, log_level: str = logging_level_option()):
     console.print(dirs_table)
 
     # Show LM registry providers
-    console.print(f"\n[cyan]Language Model Providers:[/cyan]")
+    console.print("\n[cyan]Language Model Providers:[/cyan]")
     if model_manager:
         model_manager.list_providers()
 
@@ -1256,7 +1247,7 @@ async def generate(
     temperature: float = typer.Option(
         0.7, "--temperature", "-t", help="Generation temperature"
     ),
-    output_file: Optional[Path] = typer.Option(
+    output_file: Path | None = typer.Option(
         None, "--output", "-o", help="Save output to file"
     ),
     log_level: str = logging_level_option(),

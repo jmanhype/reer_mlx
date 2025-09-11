@@ -7,15 +7,17 @@ approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
+from datetime import datetime
+from datetime import timezone
 import json
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timezone
-from uuid import uuid4, UUID
-from typing import Dict, Any, List
-from jsonschema import validate, ValidationError, Draft7Validator
+from typing import Any
+from unittest.mock import Mock, patch
+from uuid import uuid4
+
+from jsonschema import Draft7Validator, ValidationError, validate
 from jsonschema.exceptions import SchemaError
+import pytest
 
 
 class TestCandidateSchemaContract:
@@ -37,7 +39,7 @@ class TestCandidateSchemaContract:
         )
 
     @pytest.fixture
-    def candidate_schema(self, schema_path: Path) -> Dict[str, Any]:
+    def candidate_schema(self, schema_path: Path) -> dict[str, Any]:
         """Load the candidate JSON schema."""
         with open(schema_path) as f:
             return json.load(f)
@@ -52,7 +54,7 @@ class TestCandidateSchemaContract:
         return validator
 
     @pytest.fixture
-    def valid_candidate_data(self) -> Dict[str, Any]:
+    def valid_candidate_data(self) -> dict[str, Any]:
         """Valid candidate data that should pass schema validation."""
         return {
             "id": str(uuid4()),
@@ -83,7 +85,7 @@ class TestCandidateSchemaContract:
 
     # Schema Structure and Metadata Tests
 
-    def test_schema_has_required_metadata(self, candidate_schema: Dict[str, Any]):
+    def test_schema_has_required_metadata(self, candidate_schema: dict[str, Any]):
         """Test that schema contains required JSON Schema Draft 7 metadata."""
         assert candidate_schema["$schema"] == "http://json-schema.org/draft-07/schema#"
         assert (
@@ -96,17 +98,17 @@ class TestCandidateSchemaContract:
         assert "description" in candidate_schema
 
     def test_schema_validation_contract(
-        self, candidate_schema: Dict[str, Any], mock_validator: Mock
+        self, candidate_schema: dict[str, Any], mock_validator: Mock
     ):
         """Test schema validation behavior contract."""
         # This will fail initially - testing the contract, not implementation
         with patch("jsonschema.Draft7Validator", return_value=mock_validator):
-            validator = Draft7Validator(candidate_schema)
+            Draft7Validator(candidate_schema)
 
             # Verify validator was created with our schema
             mock_validator.check_schema.assert_called_once()
 
-    def test_schema_is_valid_json_schema(self, candidate_schema: Dict[str, Any]):
+    def test_schema_is_valid_json_schema(self, candidate_schema: dict[str, Any]):
         """Test that the schema itself is a valid JSON Schema Draft 7."""
         # This will fail if schema has structural issues
         try:
@@ -116,7 +118,7 @@ class TestCandidateSchemaContract:
 
     # Required Fields Validation Tests
 
-    def test_all_required_fields_present(self, candidate_schema: Dict[str, Any]):
+    def test_all_required_fields_present(self, candidate_schema: dict[str, Any]):
         """Test that all required fields are defined in schema."""
         required_fields = {
             "id",
@@ -133,7 +135,7 @@ class TestCandidateSchemaContract:
         assert schema_required == required_fields
 
     def test_missing_required_field_validation_fails(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that missing any required field causes validation failure."""
         required_fields = candidate_schema["required"]
@@ -149,7 +151,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_features_required_fields(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that features has all required nested fields."""
         features_schema = candidate_schema["properties"]["features"]
@@ -172,7 +174,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_scoring_details_required_fields(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that scoring_details has all required nested fields."""
         scoring_schema = candidate_schema["properties"]["scoring_details"]
@@ -191,7 +193,7 @@ class TestCandidateSchemaContract:
     # Type Checking Tests
 
     def test_id_must_be_uuid_format(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that id field must be valid UUID format."""
         id_schema = candidate_schema["properties"]["id"]
@@ -209,7 +211,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_created_at_must_be_datetime_format(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that created_at field must be valid ISO 8601 datetime."""
         created_at_schema = candidate_schema["properties"]["created_at"]
@@ -232,7 +234,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_content_max_length_constraint(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that content has maximum length constraint for Twitter."""
         content_schema = candidate_schema["properties"]["content"]
@@ -247,7 +249,7 @@ class TestCandidateSchemaContract:
             validate(invalid_data, candidate_schema)
 
     def test_thread_parts_array_validation(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that thread_parts is array of strings with constraints."""
         thread_schema = candidate_schema["properties"]["thread_parts"]
@@ -271,7 +273,7 @@ class TestCandidateSchemaContract:
             validate(invalid_data, candidate_schema)
 
     def test_score_must_be_number_in_range(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that score must be number between 0.0 and 1.0."""
         score_schema = candidate_schema["properties"]["score"]
@@ -290,7 +292,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_features_length_constraints(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that features.length has proper integer constraints."""
         length_schema = candidate_schema["properties"]["features"]["properties"][
@@ -311,7 +313,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_hashtags_pattern_validation(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that hashtags follow the required pattern."""
         hashtags_schema = candidate_schema["properties"]["features"]["properties"][
@@ -332,7 +334,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_mentions_pattern_validation(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that mentions follow the required pattern."""
         mentions_schema = candidate_schema["properties"]["features"]["properties"][
@@ -353,7 +355,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_links_uri_format_validation(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that links are valid URIs."""
         links_schema = candidate_schema["properties"]["features"]["properties"]["links"]
@@ -372,7 +374,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_media_type_enum_validation(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that media_type is one of allowed enum values."""
         media_type_schema = candidate_schema["properties"]["features"]["properties"][
@@ -392,7 +394,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_scoring_details_constraints(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that scoring_details fields have proper constraints."""
         scoring_schema = candidate_schema["properties"]["scoring_details"]["properties"]
@@ -436,7 +438,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_provider_pattern_validation(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that provider follows the required pattern."""
         provider_schema = candidate_schema["properties"]["provider"]
@@ -461,7 +463,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_trace_ids_array_validation(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that trace_ids is array of UUIDs with minimum items."""
         trace_ids_schema = candidate_schema["properties"]["trace_ids"]
@@ -485,7 +487,7 @@ class TestCandidateSchemaContract:
             validate(invalid_data, candidate_schema)
 
     def test_status_enum_validation(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that status is one of allowed enum values."""
         status_schema = candidate_schema["properties"]["status"]
@@ -510,7 +512,7 @@ class TestCandidateSchemaContract:
     # Edge Cases and Invalid Data Tests
 
     def test_additional_properties_not_allowed(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that additional properties are not allowed."""
         assert candidate_schema["additionalProperties"] is False
@@ -525,7 +527,7 @@ class TestCandidateSchemaContract:
             validate(invalid_data, candidate_schema)
 
     def test_null_values_rejected(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that null values are rejected for required fields."""
         required_fields = candidate_schema["required"]
@@ -538,7 +540,7 @@ class TestCandidateSchemaContract:
                 validate(invalid_data, candidate_schema)
 
     def test_empty_arrays_validation(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test behavior with empty arrays for array fields."""
         # Empty hashtags, mentions, links should be valid
@@ -553,7 +555,7 @@ class TestCandidateSchemaContract:
             pytest.fail(f"Empty hashtags/mentions/links arrays should be valid: {e}")
 
     def test_boundary_values_validation(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test boundary values for numeric and string constraints."""
         # Test boundary values that should be valid
@@ -587,7 +589,7 @@ class TestCandidateSchemaContract:
                 )
 
     def test_thread_parts_optional_field(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that thread_parts is optional."""
         # thread_parts should not be in required fields
@@ -604,7 +606,7 @@ class TestCandidateSchemaContract:
 
     # Schema Version Compatibility Tests
 
-    def test_schema_version_compatibility(self, candidate_schema: Dict[str, Any]):
+    def test_schema_version_compatibility(self, candidate_schema: dict[str, Any]):
         """Test schema version is properly defined for compatibility tracking."""
         assert "version" in candidate_schema
         assert candidate_schema["version"] == "1.0.0"
@@ -615,7 +617,7 @@ class TestCandidateSchemaContract:
 
         assert re.match(version_pattern, candidate_schema["version"])
 
-    def test_schema_id_uniqueness(self, candidate_schema: Dict[str, Any]):
+    def test_schema_id_uniqueness(self, candidate_schema: dict[str, Any]):
         """Test that schema has unique identifier for version tracking."""
         assert "$id" in candidate_schema
         schema_id = candidate_schema["$id"]
@@ -628,8 +630,8 @@ class TestCandidateSchemaContract:
     def test_validation_interaction_contract(
         self,
         mock_validate: Mock,
-        candidate_schema: Dict[str, Any],
-        valid_candidate_data: Dict[str, Any],
+        candidate_schema: dict[str, Any],
+        valid_candidate_data: dict[str, Any],
     ):
         """Test the interaction contract with jsonschema validation."""
         # This tests HOW validation is called, not WHAT it validates
@@ -641,7 +643,7 @@ class TestCandidateSchemaContract:
         # Verify the interaction occurred with correct parameters
         mock_validate.assert_called_once_with(valid_candidate_data, candidate_schema)
 
-    def test_error_handling_contract(self, candidate_schema: Dict[str, Any]):
+    def test_error_handling_contract(self, candidate_schema: dict[str, Any]):
         """Test that validation errors are properly raised and structured."""
         invalid_data = {"invalid": "data"}
 
@@ -656,7 +658,7 @@ class TestCandidateSchemaContract:
             assert hasattr(e, "schema_path")
 
     def test_valid_data_contract_success(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test that valid data passes validation contract."""
         # This will fail initially since we're testing the contract
@@ -673,7 +675,7 @@ class TestCandidateSchemaContract:
     # Performance and Edge Case Tests
 
     def test_large_thread_parts_array(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test validation with maximum thread_parts array."""
         test_data = valid_candidate_data.copy()
@@ -688,7 +690,7 @@ class TestCandidateSchemaContract:
             pytest.fail(f"Maximum thread_parts array should be valid: {e}")
 
     def test_unicode_content_handling(
-        self, candidate_schema: Dict[str, Any], valid_candidate_data: Dict[str, Any]
+        self, candidate_schema: dict[str, Any], valid_candidate_data: dict[str, Any]
     ):
         """Test validation with Unicode content."""
         test_data = valid_candidate_data.copy()
@@ -702,7 +704,7 @@ class TestCandidateSchemaContract:
         except ValidationError as e:
             pytest.fail(f"Unicode content should be valid: {e}")
 
-    def test_minimal_valid_candidate(self, candidate_schema: Dict[str, Any]):
+    def test_minimal_valid_candidate(self, candidate_schema: dict[str, Any]):
         """Test minimal candidate with only required fields."""
         minimal_data = {
             "id": str(uuid4()),

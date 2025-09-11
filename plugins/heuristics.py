@@ -4,15 +4,11 @@ Provides comprehensive heuristics for evaluating content quality, engagement
 potential, brand alignment, and other metrics for social media content.
 """
 
-import re
-import math
 import asyncio
-import logging
-from typing import Dict, Any, List, Optional, Tuple, Union
-from dataclasses import dataclass, field
-from datetime import datetime
-import statistics
 from collections import Counter
+from dataclasses import dataclass, field
+import logging
+import re
 
 try:
     import numpy as np
@@ -22,8 +18,7 @@ except ImportError:
     NUMPY_AVAILABLE = False
     np = None
 
-from core.exceptions import ScoringError, ValidationError
-
+from core.exceptions import ScoringError
 
 logger = logging.getLogger(__name__)
 
@@ -63,9 +58,9 @@ class ContentMetrics:
     engagement_potential: float
 
     # Advanced metrics
-    keyword_density: Dict[str, float] = field(default_factory=dict)
-    pos_tag_distribution: Dict[str, int] = field(default_factory=dict)
-    named_entities: List[str] = field(default_factory=list)
+    keyword_density: dict[str, float] = field(default_factory=dict)
+    pos_tag_distribution: dict[str, int] = field(default_factory=dict)
+    named_entities: list[str] = field(default_factory=list)
 
 
 class ReadabilityCalculator:
@@ -330,7 +325,7 @@ class EngagementPredictor:
         cls,
         text: str,
         platform: str = "general",
-        metrics: Optional[ContentMetrics] = None,
+        metrics: ContentMetrics | None = None,
     ) -> float:
         """Predict engagement potential.
 
@@ -399,26 +394,24 @@ class EngagementPredictor:
 
         if optimal_min <= length <= optimal_max:
             return 1.0
-        elif length < optimal_min:
+        if length < optimal_min:
             return length / optimal_min
-        else:
-            # Penalty for being too long
-            penalty = (length - optimal_max) / optimal_max
-            return max(0.0, 1.0 - penalty)
+        # Penalty for being too long
+        penalty = (length - optimal_max) / optimal_max
+        return max(0.0, 1.0 - penalty)
 
     @classmethod
     def _calculate_hashtag_score(cls, hashtag_count: int) -> float:
         """Calculate hashtag optimization score."""
         if hashtag_count == 0:
             return 0.3
-        elif 1 <= hashtag_count <= 3:
+        if 1 <= hashtag_count <= 3:
             return 1.0
-        elif 4 <= hashtag_count <= 5:
+        if 4 <= hashtag_count <= 5:
             return 0.8
-        elif 6 <= hashtag_count <= 10:
+        if 6 <= hashtag_count <= 10:
             return 0.6
-        else:
-            return 0.2  # Too many hashtags
+        return 0.2  # Too many hashtags
 
     @classmethod
     def _calculate_emoji_score(cls, emoji_count: int, text_length: int) -> float:
@@ -430,10 +423,9 @@ class EngagementPredictor:
 
         if 0.5 <= emoji_ratio <= 2.0:
             return 1.0
-        elif emoji_ratio < 0.5:
+        if emoji_ratio < 0.5:
             return 0.5 + emoji_ratio
-        else:
-            return max(0.2, 1.0 - (emoji_ratio - 2.0) / 5.0)
+        return max(0.2, 1.0 - (emoji_ratio - 2.0) / 5.0)
 
     @classmethod
     def _calculate_pattern_score(cls, text: str) -> float:
@@ -507,7 +499,7 @@ class ContentAnalyzer:
         return metrics
 
     @staticmethod
-    def _calculate_keyword_density(text: str, top_n: int = 10) -> Dict[str, float]:
+    def _calculate_keyword_density(text: str, top_n: int = 10) -> dict[str, float]:
         """Calculate keyword density for top words.
 
         Args:
@@ -590,7 +582,7 @@ class ContentAnalyzer:
 class HeuristicScorer:
     """Main scoring class using various heuristics."""
 
-    def __init__(self, weights: Optional[HeuristicWeights] = None):
+    def __init__(self, weights: HeuristicWeights | None = None):
         """Initialize scorer with custom weights.
 
         Args:
@@ -602,8 +594,8 @@ class HeuristicScorer:
         self,
         text: str,
         platform: str = "general",
-        target_audience: Optional[str] = None,
-    ) -> Tuple[float, Dict[str, float]]:
+        target_audience: str | None = None,
+    ) -> tuple[float, dict[str, float]]:
         """Score content using multiple heuristics.
 
         Args:
@@ -656,7 +648,7 @@ class HeuristicScorer:
             return overall_score, scores
 
         except Exception as e:
-            logger.error(f"Content scoring failed: {e}")
+            logger.exception(f"Content scoring failed: {e}")
             raise ScoringError(f"Scoring failed: {e}")
 
     def _score_length(self, text: str, platform: str) -> float:
@@ -680,12 +672,11 @@ class HeuristicScorer:
         """Score mention usage."""
         if mention_count == 0:
             return 0.5
-        elif mention_count <= 2:
+        if mention_count <= 2:
             return 1.0
-        elif mention_count <= 5:
+        if mention_count <= 5:
             return 0.8
-        else:
-            return 0.3  # Too many mentions
+        return 0.3  # Too many mentions
 
     def _score_emojis(self, emoji_count: int, text_length: int) -> float:
         """Score emoji usage."""
@@ -747,8 +738,8 @@ def create_platform_scorer(platform: str) -> HeuristicScorer:
 
 
 async def score_content_async(
-    text: str, platform: str = "general", scorer: Optional[HeuristicScorer] = None
-) -> Tuple[float, Dict[str, float]]:
+    text: str, platform: str = "general", scorer: HeuristicScorer | None = None
+) -> tuple[float, dict[str, float]]:
     """Async wrapper for content scoring.
 
     Args:

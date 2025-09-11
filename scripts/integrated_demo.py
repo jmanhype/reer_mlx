@@ -11,41 +11,35 @@ Demonstrates the complete integration of all components:
 This script shows how all components work together in a cohesive system.
 """
 
-import asyncio
+from pathlib import Path
 import sys
 import time
-from pathlib import Path
-from typing import Dict, Any, List
 from uuid import uuid4
-import typer
+
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
-from rich import print as rprint
+import typer
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 # Import integrated components
-from core.integration import create_mining_service, REERMiningConfig
-from plugins.lm_registry import get_registry
+from config.logging_config import get_component_logger, setup_production_logging
+from core.integration import create_mining_service
 from plugins.dspy_pipeline import (
     create_dspy_pipeline,
-    DSPyPipelineConfig,
-    DSPyTemplate,
-    DSPyExample,
     get_social_media_templates,
 )
+from plugins.lm_registry import get_registry
 from scripts.cli_common import (
     get_model_manager,
     init_cli_environment,
-    setup_cli_logging,
     performance_monitor,
     with_error_handling,
 )
-from config.logging_config import setup_production_logging, get_component_logger
 
 app = typer.Typer(
     name="integrated-demo",
@@ -334,7 +328,7 @@ async def _demo_lm_registry_routing(provider_uri: str, trace_id: str):
             )
 
             logger.info(
-                f"Provider test successful",
+                "Provider test successful",
                 extra={"provider": test_provider, "duration_ms": duration},
             )
 
@@ -344,7 +338,7 @@ async def _demo_lm_registry_routing(provider_uri: str, trace_id: str):
             )
 
             logger.warning(
-                f"Provider test failed",
+                "Provider test failed",
                 extra={"provider": test_provider, "error": str(e)},
             )
 
@@ -442,28 +436,6 @@ async def _demo_dspy_pipeline(
             progress.update(pipeline_task, description="Running optimization demo...")
 
             # Create mock training examples
-            training_examples = [
-                {
-                    "inputs": {
-                        "topic": "productivity",
-                        "style": "tip",
-                        "target_audience": "professionals",
-                    },
-                    "outputs": {
-                        "content": "Time-blocking changed my life! Block specific hours for deep work."
-                    },
-                },
-                {
-                    "inputs": {
-                        "topic": "learning",
-                        "style": "educational",
-                        "target_audience": "students",
-                    },
-                    "outputs": {
-                        "content": "Active recall beats re-reading. Test yourself instead of highlighting."
-                    },
-                },
-            ]
 
             console.print(
                 "[yellow]Note: Optimization would run here with real DSPy setup[/yellow]"
@@ -477,7 +449,7 @@ async def _demo_rate_limiting(trace_id: str):
     """Demonstrate rate limiting with exponential backoff."""
 
     console.print("\n[cyan]Step 5: Rate Limiting Demonstration[/cyan]")
-    logger = get_component_logger("demo.rate_limiting", trace_id=trace_id)
+    get_component_logger("demo.rate_limiting", trace_id=trace_id)
 
     mining_service = create_mining_service(
         DEMO_CONFIG["trace_store_path"],
@@ -523,7 +495,7 @@ async def _demo_rate_limiting(trace_id: str):
                 duration = time.time() - start_time
                 console.print(f"  Request {i+1}: ✅ Success ({duration:.2f}s)")
 
-            except Exception as e:
+            except Exception:
                 duration = time.time() - start_time
                 console.print(f"  Request {i+1}: ⚠️ Limited ({duration:.2f}s)")
 

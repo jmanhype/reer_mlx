@@ -9,37 +9,34 @@ Provides shared functionality for all CLI scripts including:
 """
 
 import asyncio
+from collections.abc import Callable
+from functools import wraps
+from pathlib import Path
 import sys
 import time
-from pathlib import Path
-from typing import Optional, Dict, Any, Callable, TypeVar, Union
-from functools import wraps
-import typer
+from typing import Any, TypeVar
+
+from loguru import logger
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from rich.panel import Panel
 from rich.table import Table
-from loguru import logger
+import typer
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from plugins.lm_registry import (
-    LanguageModelRegistry,
-    get_registry,
-    get_recommended_model,
-)
+from core.exceptions import REERBaseException
 from core.integration import (
     IntegratedREERMiner,
-    REERMiningConfig,
-    StructuredLogger,
     LoggingConfig,
     RateLimitConfig,
-    create_mining_service,
-    setup_logging,
+    REERMiningConfig,
 )
-from core.exceptions import REERBaseException
+from plugins.lm_registry import (
+    get_recommended_model,
+    get_registry,
+)
 
 # Type variable for decorated functions
 F = TypeVar("F", bound=Callable[..., Any])
@@ -62,7 +59,7 @@ _cli_config = {
 # ============================================================================
 
 
-def get_cli_config() -> Dict[str, Any]:
+def get_cli_config() -> dict[str, Any]:
     """Get current CLI configuration."""
     return _cli_config.copy()
 
@@ -119,7 +116,7 @@ class CLIModelManager:
             raise
 
     def _display_provider_status(
-        self, health_status: Dict[str, Dict[str, Any]]
+        self, health_status: dict[str, dict[str, Any]]
     ) -> None:
         """Display provider health status."""
 
@@ -139,7 +136,7 @@ class CLIModelManager:
 
         console.print(status_table)
 
-    async def get_adapter(self, uri: Optional[str] = None, **kwargs):
+    async def get_adapter(self, uri: str | None = None, **kwargs):
         """Get language model adapter."""
         if not self._initialized:
             await self.initialize()
@@ -149,9 +146,7 @@ class CLIModelManager:
 
         return await self.registry.get_adapter(uri, **kwargs)
 
-    async def generate_text(
-        self, prompt: str, uri: Optional[str] = None, **kwargs
-    ) -> str:
+    async def generate_text(self, prompt: str, uri: str | None = None, **kwargs) -> str:
         """Generate text using the registry."""
         if not uri:
             uri = _cli_config["default_provider"]
@@ -205,11 +200,11 @@ class CLIMiningService:
     """Mining service for CLI applications."""
 
     def __init__(self):
-        self._service: Optional[IntegratedREERMiner] = None
-        self._config: Optional[REERMiningConfig] = None
+        self._service: IntegratedREERMiner | None = None
+        self._config: REERMiningConfig | None = None
 
     async def initialize(
-        self, trace_store_path: Optional[Path] = None, rate_limit_enabled: bool = True
+        self, trace_store_path: Path | None = None, rate_limit_enabled: bool = True
     ) -> None:
         """Initialize the mining service."""
 
@@ -259,7 +254,7 @@ class CLIMiningService:
 
         return await self._service.query_traces(*args, **kwargs)
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get performance statistics."""
         if not self._service:
             await self.initialize()
@@ -306,8 +301,7 @@ def with_lm_registry(func: F) -> F:
     # Return appropriate wrapper based on function type
     if asyncio.iscoroutinefunction(func):
         return async_wrapper
-    else:
-        return sync_wrapper
+    return sync_wrapper
 
 
 def with_mining_service(func: F) -> F:
@@ -330,8 +324,7 @@ def with_mining_service(func: F) -> F:
 
     if asyncio.iscoroutinefunction(func):
         return async_wrapper
-    else:
-        return sync_wrapper
+    return sync_wrapper
 
 
 def with_error_handling(func: F) -> F:
@@ -372,7 +365,7 @@ def performance_monitor(operation_name: str):
                 )
                 return result
 
-            except Exception as e:
+            except Exception:
                 duration = time.time() - start_time
                 console.print(
                     f"[red]✗ {operation_name} failed after {duration:.2f}s[/red]"
@@ -392,7 +385,7 @@ def performance_monitor(operation_name: str):
                 )
                 return result
 
-            except Exception as e:
+            except Exception:
                 duration = time.time() - start_time
                 console.print(
                     f"[red]✗ {operation_name} failed after {duration:.2f}s[/red]"
@@ -401,8 +394,7 @@ def performance_monitor(operation_name: str):
 
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
-        else:
-            return sync_wrapper
+        return sync_wrapper
 
     return decorator
 
@@ -496,7 +488,7 @@ def display_trace_stats(traces: list) -> None:
     console.print(stats_table)
 
 
-def show_progress(description: str, total: Optional[int] = None):
+def show_progress(description: str, total: int | None = None):
     """Create a progress context manager."""
     return Progress(
         SpinnerColumn(),
@@ -510,7 +502,7 @@ def show_progress(description: str, total: Optional[int] = None):
 # ============================================================================
 
 
-def provider_option(default: Optional[str] = None):
+def provider_option(default: str | None = None):
     """Common provider URI option for CLI commands."""
     return typer.Option(
         default or _cli_config["default_provider"],
@@ -520,7 +512,7 @@ def provider_option(default: Optional[str] = None):
     )
 
 
-def trace_store_option(default: Optional[Path] = None):
+def trace_store_option(default: Path | None = None):
     """Common trace store path option for CLI commands."""
     return typer.Option(
         default or _cli_config["trace_store_path"],
@@ -551,7 +543,7 @@ def rate_limit_option():
 
 def init_cli_environment(
     logging_level: str = "INFO",
-    provider_uri: Optional[str] = None,
+    provider_uri: str | None = None,
     enable_rate_limiting: bool = True,
 ) -> None:
     """Initialize the CLI environment with all necessary components."""
@@ -591,9 +583,9 @@ async def verify_integrations() -> bool:
         await mining_service.initialize()
 
         # Test basic operations
-        test_provider = _cli_config["default_provider"]
+        _cli_config["default_provider"]
 
-        console.print(f"[green]✓ All integrations verified successfully[/green]")
+        console.print("[green]✓ All integrations verified successfully[/green]")
         return True
 
     except Exception as e:

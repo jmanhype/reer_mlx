@@ -5,20 +5,19 @@ to optimize social media content generation and strategy evolution. Provides
 multi-objective optimization, population management, and convergence monitoring.
 """
 
-import asyncio
-import random
-import math
-import numpy as np
-from typing import Dict, Any, List, Optional, Tuple, Union, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import datetime
+from datetime import timezone
 from enum import Enum
 import json
-from abc import ABC, abstractmethod
+from pathlib import Path
+import random
+from typing import Any
 
-from .exceptions import TrainingError, OptimizationError, ConvergenceError, FitnessError
-from .candidate_scorer import REERCandidateScorer, ContentCandidate, ScoringMetrics
+import numpy as np
+
+from .candidate_scorer import ContentCandidate, REERCandidateScorer, ScoringMetrics
+from .exceptions import FitnessError, TrainingError
 
 
 class SelectionMethod(Enum):
@@ -53,14 +52,14 @@ class Individual:
     """Represents an individual in the genetic algorithm population."""
 
     individual_id: str
-    genes: Dict[str, Any]  # Content generation parameters
+    genes: dict[str, Any]  # Content generation parameters
     phenotype: str  # Generated content
-    fitness_scores: Dict[str, float] = field(default_factory=dict)
+    fitness_scores: dict[str, float] = field(default_factory=dict)
     overall_fitness: float = 0.0
     age: int = 0
     generation: int = 0
-    parent_ids: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    parent_ids: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -68,7 +67,7 @@ class Population:
     """Represents a population of individuals."""
 
     population_id: str
-    individuals: List[Individual]
+    individuals: list[Individual]
     generation: int
     population_size: int
     diversity_score: float = 0.0
@@ -96,7 +95,7 @@ class OptimizationConfig:
     max_stagnant_generations: int = 10
     diversity_threshold: float = 0.15
     target_fitness: float = 0.9
-    fitness_objectives: List[Dict[str, Any]] = field(
+    fitness_objectives: list[dict[str, Any]] = field(
         default_factory=lambda: [
             {"name": "engagement_rate", "weight": 0.4, "target": "maximize"},
             {"name": "quality_score", "weight": 0.3, "target": "maximize"},
@@ -113,20 +112,20 @@ class OptimizationResult:
     optimization_id: str
     best_individual: Individual
     final_population: Population
-    optimization_history: List[Dict[str, Any]]
-    convergence_info: Dict[str, Any]
-    performance_metrics: Dict[str, Any]
+    optimization_history: list[dict[str, Any]]
+    convergence_info: dict[str, Any]
+    performance_metrics: dict[str, Any]
     total_generations: int
     total_evaluations: int
     optimization_time_seconds: float
     success: bool
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class FitnessEvaluator:
     """Evaluates fitness of individuals using multiple objectives."""
 
-    def __init__(self, scorer: REERCandidateScorer, objectives: List[Dict[str, Any]]):
+    def __init__(self, scorer: REERCandidateScorer, objectives: list[dict[str, Any]]):
         """Initialize fitness evaluator.
 
         Args:
@@ -290,7 +289,7 @@ class ContentGenerator:
             ],
         }
 
-    def generate_content(self, genes: Dict[str, Any]) -> str:
+    def generate_content(self, genes: dict[str, Any]) -> str:
         """Generate content based on genetic parameters.
 
         Args:
@@ -371,7 +370,7 @@ class ContentGenerator:
 
         # Find best matching topic
         best_match = "innovation"  # default
-        for key in content_variants.keys():
+        for key in content_variants:
             if key.lower() in topic.lower():
                 best_match = key
                 break
@@ -379,7 +378,7 @@ class ContentGenerator:
         variants = content_variants[best_match]
         return random.choice(variants)
 
-    def _select_hashtags(self, category: str, count: int) -> List[str]:
+    def _select_hashtags(self, category: str, count: int) -> list[str]:
         """Select hashtags from specified category."""
         hashtags = self.hashtag_pools.get(category, self.hashtag_pools["tech"])
         selected_count = min(count, len(hashtags))
@@ -425,7 +424,7 @@ class GeneticOperators:
 
     def select_parents(
         self, population: Population, num_parents: int
-    ) -> List[Individual]:
+    ) -> list[Individual]:
         """Select parents for reproduction.
 
         Args:
@@ -437,16 +436,15 @@ class GeneticOperators:
         """
         if self.config.selection_method == SelectionMethod.TOURNAMENT:
             return self._tournament_selection(population, num_parents)
-        elif self.config.selection_method == SelectionMethod.ROULETTE_WHEEL:
+        if self.config.selection_method == SelectionMethod.ROULETTE_WHEEL:
             return self._roulette_wheel_selection(population, num_parents)
-        elif self.config.selection_method == SelectionMethod.RANK_BASED:
+        if self.config.selection_method == SelectionMethod.RANK_BASED:
             return self._rank_based_selection(population, num_parents)
-        else:
-            return self._tournament_selection(population, num_parents)
+        return self._tournament_selection(population, num_parents)
 
     def _tournament_selection(
         self, population: Population, num_parents: int
-    ) -> List[Individual]:
+    ) -> list[Individual]:
         """Tournament selection method."""
         parents = []
 
@@ -465,7 +463,7 @@ class GeneticOperators:
 
     def _roulette_wheel_selection(
         self, population: Population, num_parents: int
-    ) -> List[Individual]:
+    ) -> list[Individual]:
         """Roulette wheel selection method."""
         # Calculate selection probabilities
         fitness_scores = [ind.overall_fitness for ind in population.individuals]
@@ -493,7 +491,7 @@ class GeneticOperators:
 
     def _rank_based_selection(
         self, population: Population, num_parents: int
-    ) -> List[Individual]:
+    ) -> list[Individual]:
         """Rank-based selection method."""
         # Sort by fitness
         sorted_individuals = sorted(
@@ -522,7 +520,7 @@ class GeneticOperators:
 
     def crossover(
         self, parent1: Individual, parent2: Individual, generation: int
-    ) -> Tuple[Individual, Individual]:
+    ) -> tuple[Individual, Individual]:
         """Perform crossover between two parents.
 
         Args:
@@ -535,14 +533,13 @@ class GeneticOperators:
         """
         if self.config.crossover_method == CrossoverMethod.SEMANTIC:
             return self._semantic_crossover(parent1, parent2, generation)
-        elif self.config.crossover_method == CrossoverMethod.UNIFORM:
+        if self.config.crossover_method == CrossoverMethod.UNIFORM:
             return self._uniform_crossover(parent1, parent2, generation)
-        else:
-            return self._semantic_crossover(parent1, parent2, generation)
+        return self._semantic_crossover(parent1, parent2, generation)
 
     def _semantic_crossover(
         self, parent1: Individual, parent2: Individual, generation: int
-    ) -> Tuple[Individual, Individual]:
+    ) -> tuple[Individual, Individual]:
         """Semantic crossover for content generation genes."""
         # Create offspring genes by combining parent genes
         offspring1_genes = parent1.genes.copy()
@@ -580,13 +577,13 @@ class GeneticOperators:
 
     def _uniform_crossover(
         self, parent1: Individual, parent2: Individual, generation: int
-    ) -> Tuple[Individual, Individual]:
+    ) -> tuple[Individual, Individual]:
         """Uniform crossover method."""
         # Randomly select genes from each parent
         offspring1_genes = {}
         offspring2_genes = {}
 
-        for key in parent1.genes.keys():
+        for key in parent1.genes:
             if random.random() < 0.5:
                 offspring1_genes[key] = parent1.genes[key]
                 offspring2_genes[key] = parent2.genes.get(key, parent1.genes[key])
@@ -627,10 +624,9 @@ class GeneticOperators:
         if random.random() < self.config.mutation_rate:
             if self.config.mutation_method == MutationMethod.FEATURE_INJECTION:
                 return self._feature_injection_mutation(individual)
-            elif self.config.mutation_method == MutationMethod.STRUCTURE_MODIFICATION:
+            if self.config.mutation_method == MutationMethod.STRUCTURE_MODIFICATION:
                 return self._structure_modification_mutation(individual)
-            else:
-                return self._feature_injection_mutation(individual)
+            return self._feature_injection_mutation(individual)
 
         return individual
 
@@ -648,9 +644,7 @@ class GeneticOperators:
                 mutated_genes[key_to_mutate] = random.randint(0, 5)
             elif key_to_mutate == "emoji_intensity":
                 mutated_genes[key_to_mutate] = random.uniform(0.0, 1.0)
-            elif key_to_mutate == "use_hashtags":
-                mutated_genes[key_to_mutate] = not mutated_genes[key_to_mutate]
-            elif key_to_mutate == "use_cta":
+            elif key_to_mutate in {"use_hashtags", "use_cta"}:
                 mutated_genes[key_to_mutate] = not mutated_genes[key_to_mutate]
             elif key_to_mutate == "content_type":
                 types = ["announcement", "tip", "question", "insight"]
@@ -684,8 +678,8 @@ class ConvergenceMonitor:
             config: Optimization configuration
         """
         self.config = config
-        self.fitness_history: List[float] = []
-        self.diversity_history: List[float] = []
+        self.fitness_history: list[float] = []
+        self.diversity_history: list[float] = []
         self.stagnant_generations = 0
         self.converged = False
         self.convergence_reason = ""
@@ -731,7 +725,7 @@ class ConvergenceMonitor:
 
         return False
 
-    def get_convergence_info(self) -> Dict[str, Any]:
+    def get_convergence_info(self) -> dict[str, Any]:
         """Get convergence information."""
         return {
             "converged": self.converged,
@@ -755,7 +749,7 @@ class REERGEPATrainer:
     """
 
     def __init__(
-        self, scorer: REERCandidateScorer, config: Optional[OptimizationConfig] = None
+        self, scorer: REERCandidateScorer, config: OptimizationConfig | None = None
     ):
         """Initialize GEPA trainer.
 
@@ -773,12 +767,12 @@ class REERGEPATrainer:
         self.content_generator = ContentGenerator()
 
         # Optimization state
-        self.current_population: Optional[Population] = None
-        self.optimization_history: List[Dict[str, Any]] = []
+        self.current_population: Population | None = None
+        self.optimization_history: list[dict[str, Any]] = []
         self.total_evaluations = 0
 
     def _create_initial_population(
-        self, optimization_target: Dict[str, Any]
+        self, optimization_target: dict[str, Any]
     ) -> Population:
         """Create initial population with diverse individuals.
 
@@ -861,7 +855,7 @@ class REERGEPATrainer:
                     diversity = min(true_count, len(gene_values) - true_count) / len(
                         gene_values
                     )
-                elif all(isinstance(v, (int, float)) for v in gene_values):
+                elif all(isinstance(v, int | float) for v in gene_values):
                     # Numeric diversity (normalized standard deviation)
                     if len(set(gene_values)) > 1:
                         diversity = np.std(gene_values) / (np.mean(gene_values) + 0.001)
@@ -870,7 +864,7 @@ class REERGEPATrainer:
                         diversity = 0.0
                 else:
                     # Categorical diversity
-                    unique_values = len(set(str(v) for v in gene_values))
+                    unique_values = len({str(v) for v in gene_values})
                     diversity = unique_values / len(gene_values)
 
                 gene_diversity_scores.append(diversity)
@@ -880,8 +874,8 @@ class REERGEPATrainer:
 
     async def optimize(
         self,
-        optimization_target: Dict[str, Any],
-        initial_population: Optional[Population] = None,
+        optimization_target: dict[str, Any],
+        initial_population: Population | None = None,
     ) -> OptimizationResult:
         """Run GEPA optimization process.
 

@@ -8,26 +8,24 @@ This module provides centralized integration services connecting:
 """
 
 import asyncio
-import logging
-import time
-from typing import Dict, Any, List, Optional, Union, Callable
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from pathlib import Path
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from datetime import datetime
+from datetime import timezone
 import json
+import logging
+from pathlib import Path
+import time
+from typing import Any
 from uuid import uuid4
 
-from .trace_store import REERTraceStore, TraceRecord
+from ..plugins.lm_registry import get_registry
 from .exceptions import (
-    REERBaseException,
-    TraceStoreError,
     ExtractionError,
     ScoringError,
-    ValidationError,
+    TraceStoreError,
 )
-from ..plugins.lm_registry import LanguageModelRegistry, get_registry
-
+from .trace_store import REERTraceStore
 
 # ============================================================================
 # Rate Limiting and Backoff
@@ -50,7 +48,7 @@ class RateLimiter:
 
     def __init__(self, config: RateLimitConfig):
         self.config = config
-        self.request_times: List[float] = []
+        self.request_times: list[float] = []
         self.consecutive_failures = 0
         self._lock = asyncio.Lock()
 
@@ -142,7 +140,7 @@ class LoggingConfig:
     format: str = "json"  # "json" or "text"
     include_trace_id: bool = True
     include_performance_metrics: bool = True
-    log_file: Optional[Path] = None
+    log_file: Path | None = None
     max_log_size_mb: int = 100
     backup_count: int = 5
 
@@ -234,8 +232,8 @@ class StructuredLogger:
         self,
         level: str,
         message: str,
-        trace_id: Optional[str] = None,
-        duration_ms: Optional[float] = None,
+        trace_id: str | None = None,
+        duration_ms: float | None = None,
         **kwargs,
     ) -> None:
         """Log with additional context."""
@@ -264,7 +262,7 @@ class REERMiningConfig:
     """Configuration for integrated REER mining."""
 
     trace_store_path: Path
-    schema_path: Optional[Path] = None
+    schema_path: Path | None = None
     rate_limit_config: RateLimitConfig = field(default_factory=RateLimitConfig)
     logging_config: LoggingConfig = field(default_factory=LoggingConfig)
     default_provider_uri: str = "mlx://mlx-community/Llama-3.2-3B-Instruct-4bit"
@@ -307,9 +305,9 @@ class IntegratedREERMiner:
         self,
         source_post_id: str,
         content: str,
-        seed_params: Dict[str, Any],
-        provider_uri: Optional[str] = None,
-        trace_id: Optional[str] = None,
+        seed_params: dict[str, Any],
+        provider_uri: str | None = None,
+        trace_id: str | None = None,
     ) -> str:
         """Extract strategy from content and store in TraceStore.
 
@@ -390,7 +388,7 @@ class IntegratedREERMiner:
             duration_ms = (time.time() - start_time) * 1000
             self.logger.log_with_context(
                 "INFO",
-                f"Successfully extracted and stored strategy",
+                "Successfully extracted and stored strategy",
                 trace_id=trace_id,
                 duration_ms=duration_ms,
                 score=score,
@@ -414,42 +412,41 @@ class IntegratedREERMiner:
                 error_type=type(e).__name__,
             )
 
-            if isinstance(e, (TraceStoreError, ExtractionError)):
+            if isinstance(e, TraceStoreError | ExtractionError):
                 raise
-            else:
-                raise ExtractionError(
-                    f"Extraction failed for post {source_post_id}: {e}",
-                    details={"source_post_id": source_post_id, "trace_id": trace_id},
-                    original_error=e,
-                )
+            raise ExtractionError(
+                f"Extraction failed for post {source_post_id}: {e}",
+                details={"source_post_id": source_post_id, "trace_id": trace_id},
+                original_error=e,
+            )
 
         finally:
             self._operation_stats["total_extractions"] += 1
 
     async def _extract_strategy(
         self, content: str, provider_uri: str, trace_id: str
-    ) -> tuple[List[str], float]:
+    ) -> tuple[list[str], float]:
         """Extract strategy features from content using LM provider."""
 
         # Create extraction prompt
         prompt = f"""
         Analyze the following social media content and extract key strategy features:
-        
+
         Content: {content}
-        
+
         Identify the main strategic elements such as:
         - Content type (educational, entertaining, promotional, etc.)
         - Tone (casual, professional, humorous, etc.)
         - Engagement tactics (questions, calls-to-action, etc.)
         - Target audience indicators
         - Timing/trending elements
-        
+
         Respond with a JSON list of strategy features and a confidence score (0.0-1.0).
         """
 
         try:
             # Generate using LM registry
-            response = await self.lm_registry.route_generate(
+            await self.lm_registry.route_generate(
                 provider_uri, prompt, max_tokens=200, temperature=0.3
             )
 
@@ -475,7 +472,7 @@ class IntegratedREERMiner:
     async def _calculate_performance_score(
         self,
         content: str,
-        strategy_features: List[str],
+        strategy_features: list[str],
         provider_uri: str,
         trace_id: str,
     ) -> float:
@@ -489,9 +486,7 @@ class IntegratedREERMiner:
             base_score = 1.0 / (1.0 + perplexity / 10.0)
             feature_bonus = len(strategy_features) * 0.05
 
-            score = min(1.0, base_score + feature_bonus)
-
-            return score
+            return min(1.0, base_score + feature_bonus)
 
         except Exception as e:
             raise ScoringError(
@@ -502,12 +497,12 @@ class IntegratedREERMiner:
 
     async def query_traces(
         self,
-        provider: Optional[str] = None,
-        min_score: Optional[float] = None,
-        strategy_features: Optional[List[str]] = None,
-        limit: Optional[int] = None,
-        trace_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        provider: str | None = None,
+        min_score: float | None = None,
+        strategy_features: list[str] | None = None,
+        limit: int | None = None,
+        trace_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Query traces from the TraceStore with optional filters."""
 
         start_time = time.time()
@@ -554,7 +549,7 @@ class IntegratedREERMiner:
             )
             raise
 
-    async def get_performance_stats(self) -> Dict[str, Any]:
+    async def get_performance_stats(self) -> dict[str, Any]:
         """Get performance statistics for the mining service."""
 
         # Calculate success rate
@@ -620,7 +615,7 @@ class IntegratedREERMiner:
 
 
 def create_mining_service(
-    trace_store_path: Union[str, Path], **kwargs
+    trace_store_path: str | Path, **kwargs
 ) -> IntegratedREERMiner:
     """Factory function to create a configured mining service.
 
@@ -637,7 +632,7 @@ def create_mining_service(
 
 
 def setup_logging(
-    level: str = "INFO", format: str = "json", log_file: Optional[Path] = None
+    level: str = "INFO", format: str = "json", log_file: Path | None = None
 ) -> LoggingConfig:
     """Setup global logging configuration.
 

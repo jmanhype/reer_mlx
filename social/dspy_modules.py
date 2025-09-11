@@ -4,15 +4,15 @@ Implements DSPy signatures and modules specifically designed for social media
 content ideation, composition, and optimization using the REER framework.
 """
 
-import logging
-from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+import logging
+from typing import Any
 
 try:
     import dspy
-    from dspy import Signature, InputField, OutputField, Module, Predict, ChainOfThought
+    from dspy import ChainOfThought, InputField, Module, OutputField, Predict, Signature
 
     DSPY_AVAILABLE = True
 except ImportError:
@@ -72,11 +72,11 @@ class ContentBrief:
     target_audience: str
     key_message: str
     tone: str = "professional"
-    hashtags: List[str] = field(default_factory=list)
-    mentions: List[str] = field(default_factory=list)
-    character_limit: Optional[int] = None
+    hashtags: list[str] = field(default_factory=list)
+    mentions: list[str] = field(default_factory=list)
+    character_limit: int | None = None
     include_cta: bool = True
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 if DSPY_AVAILABLE:
@@ -209,7 +209,7 @@ if DSPY_AVAILABLE:
             super().__init__()
             self.ideate = ChainOfThought(IdeateSignature)
 
-        def forward(self, content_brief: ContentBrief) -> Dict[str, Any]:
+        def forward(self, content_brief: ContentBrief) -> dict[str, Any]:
             """
             Generate content ideas based on the brief.
 
@@ -245,7 +245,7 @@ if DSPY_AVAILABLE:
                 }
 
             except Exception as e:
-                logger.error(f"Content ideation failed: {e}")
+                logger.exception(f"Content ideation failed: {e}")
                 return {"error": str(e), "content_ideas": [], "brief": content_brief}
 
     class SocialContentComposer(Module):
@@ -257,7 +257,7 @@ if DSPY_AVAILABLE:
 
         def forward(
             self, content_idea: str, content_brief: ContentBrief
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             """
             Compose complete social media content.
 
@@ -314,7 +314,7 @@ if DSPY_AVAILABLE:
                 }
 
             except Exception as e:
-                logger.error(f"Content composition failed: {e}")
+                logger.exception(f"Content composition failed: {e}")
                 return {"error": str(e), "post_content": "", "brief": content_brief}
 
     class SocialContentOptimizer(Module):
@@ -327,10 +327,10 @@ if DSPY_AVAILABLE:
         def forward(
             self,
             content: str,
-            metrics: Dict[str, Any],
+            metrics: dict[str, Any],
             platform: Platform,
             goal: str = "increase engagement",
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             """
             Optimize content based on performance data.
 
@@ -371,7 +371,7 @@ if DSPY_AVAILABLE:
                 }
 
             except Exception as e:
-                logger.error(f"Content optimization failed: {e}")
+                logger.exception(f"Content optimization failed: {e}")
                 return {"error": str(e), "original_content": content}
 
     class SocialTrendAnalyzer(Module):
@@ -383,12 +383,12 @@ if DSPY_AVAILABLE:
 
         def forward(
             self,
-            trending_topics: List[str],
+            trending_topics: list[str],
             platform: Platform,
             industry: str,
             brand_voice: str,
             content_history: str = "",
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             """
             Analyze trends for content opportunities.
 
@@ -424,7 +424,7 @@ if DSPY_AVAILABLE:
                 }
 
             except Exception as e:
-                logger.error(f"Trend analysis failed: {e}")
+                logger.exception(f"Trend analysis failed: {e}")
                 return {"error": str(e), "analyzed_trends": trending_topics}
 
     class SocialContentPipeline(Module):
@@ -440,8 +440,8 @@ if DSPY_AVAILABLE:
         def generate_content(
             self,
             content_brief: ContentBrief,
-            trending_topics: Optional[List[str]] = None,
-        ) -> Dict[str, Any]:
+            trending_topics: list[str] | None = None,
+        ) -> dict[str, Any]:
             """
             Complete content generation pipeline.
 
@@ -491,17 +491,17 @@ if DSPY_AVAILABLE:
                 return results
 
             except Exception as e:
-                logger.error(f"Content pipeline failed: {e}")
+                logger.exception(f"Content pipeline failed: {e}")
                 results["error"] = str(e)
                 return results
 
         def optimize_existing_content(
             self,
             content: str,
-            metrics: Dict[str, Any],
+            metrics: dict[str, Any],
             platform: Platform,
             goal: str = "increase engagement",
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             """
             Optimize existing content based on performance.
 
@@ -522,7 +522,7 @@ else:
         def __init__(self):
             logger.warning("DSPy not available, using fallback implementation")
 
-        def forward(self, content_brief: ContentBrief) -> Dict[str, Any]:
+        def forward(self, content_brief: ContentBrief) -> dict[str, Any]:
             return {
                 "error": "DSPy not available",
                 "content_ideas": [
@@ -537,7 +537,7 @@ else:
 
         def forward(
             self, content_idea: str, content_brief: ContentBrief
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             return {
                 "error": "DSPy not available",
                 "post_content": f"Basic post about {content_brief.topic}",
@@ -551,10 +551,10 @@ else:
         def forward(
             self,
             content: str,
-            metrics: Dict[str, Any],
+            metrics: dict[str, Any],
             platform: Platform,
             goal: str = "increase engagement",
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             return {"error": "DSPy not available", "original_content": content}
 
     class SocialTrendAnalyzer:
@@ -563,12 +563,12 @@ else:
 
         def forward(
             self,
-            trending_topics: List[str],
+            trending_topics: list[str],
             platform: Platform,
             industry: str,
             brand_voice: str,
             content_history: str = "",
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             return {"error": "DSPy not available", "analyzed_trends": trending_topics}
 
     class SocialContentPipeline:
@@ -582,15 +582,15 @@ else:
         def generate_content(
             self,
             content_brief: ContentBrief,
-            trending_topics: Optional[List[str]] = None,
-        ) -> Dict[str, Any]:
+            trending_topics: list[str] | None = None,
+        ) -> dict[str, Any]:
             return {"error": "DSPy not available", "brief": content_brief}
 
         def optimize_existing_content(
             self,
             content: str,
-            metrics: Dict[str, Any],
+            metrics: dict[str, Any],
             platform: Platform,
             goal: str = "increase engagement",
-        ) -> Dict[str, Any]:
+        ) -> dict[str, Any]:
             return {"error": "DSPy not available", "original_content": content}

@@ -5,16 +5,18 @@ and synthesize effective posting trajectories. Uses pattern recognition,
 temporal analysis, and strategy clustering to identify successful approaches.
 """
 
-import asyncio
-import numpy as np
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List, Optional, Tuple, Set, Union
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from collections import defaultdict, Counter
-from pathlib import Path
+from datetime import datetime, timedelta
+from datetime import timezone
 import json
+from pathlib import Path
+from typing import Any
 
-from .exceptions import TrajectoryError, StrategyError, ValidationError
+import numpy as np
+
+from tools.memory_profiler import check_memory_limit, memory_context, memory_profile
+from .exceptions import TrajectoryError
 from .trace_store import REERTraceStore
 
 
@@ -25,13 +27,13 @@ class StrategyPattern:
     pattern_id: str
     name: str
     description: str
-    features: List[str]
+    features: list[str]
     confidence: float
     frequency: int
     avg_performance: float
-    temporal_signatures: Dict[str, Any] = field(default_factory=dict)
-    content_patterns: Dict[str, Any] = field(default_factory=dict)
-    engagement_patterns: Dict[str, Any] = field(default_factory=dict)
+    temporal_signatures: dict[str, Any] = field(default_factory=dict)
+    content_patterns: dict[str, Any] = field(default_factory=dict)
+    engagement_patterns: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -39,13 +41,13 @@ class PostTrajectory:
     """Represents a trajectory of related posts."""
 
     trajectory_id: str
-    posts: List[Dict[str, Any]]
-    timeline: List[datetime]
-    strategy_evolution: List[str]
-    performance_curve: List[float]
+    posts: list[dict[str, Any]]
+    timeline: list[datetime]
+    strategy_evolution: list[str]
+    performance_curve: list[float]
     total_performance: float
     trajectory_type: str  # single, thread, campaign, series
-    extracted_patterns: List[StrategyPattern] = field(default_factory=list)
+    extracted_patterns: list[StrategyPattern] = field(default_factory=list)
 
 
 @dataclass
@@ -53,12 +55,12 @@ class StrategySynthesis:
     """Result of strategy synthesis process."""
 
     synthesis_id: str
-    input_trajectories: List[str]
-    extracted_patterns: List[StrategyPattern]
-    strategy_recommendations: List[Dict[str, Any]]
-    performance_insights: Dict[str, Any]
-    temporal_insights: Dict[str, Any]
-    content_insights: Dict[str, Any]
+    input_trajectories: list[str]
+    extracted_patterns: list[StrategyPattern]
+    strategy_recommendations: list[dict[str, Any]]
+    performance_insights: dict[str, Any]
+    temporal_insights: dict[str, Any]
+    content_insights: dict[str, Any]
     synthesis_confidence: float
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -66,7 +68,7 @@ class StrategySynthesis:
 class FeatureExtractor:
     """Extracts various features from post content and metadata."""
 
-    def extract_content_features(self, post: Dict[str, Any]) -> Dict[str, Any]:
+    def extract_content_features(self, post: dict[str, Any]) -> dict[str, Any]:
         """Extract content-based features from a post."""
         text = post.get("text", "")
 
@@ -118,7 +120,7 @@ class FeatureExtractor:
 
         return features
 
-    def extract_temporal_features(self, post: Dict[str, Any]) -> Dict[str, Any]:
+    def extract_temporal_features(self, post: dict[str, Any]) -> dict[str, Any]:
         """Extract temporal features from post timing."""
         try:
             timestamp = datetime.fromisoformat(
@@ -149,7 +151,7 @@ class FeatureExtractor:
             "quarter": (timestamp.month - 1) // 3 + 1,
         }
 
-    def extract_performance_features(self, post: Dict[str, Any]) -> Dict[str, Any]:
+    def extract_performance_features(self, post: dict[str, Any]) -> dict[str, Any]:
         """Extract performance-related features."""
         metrics = post.get("metrics", {})
 
@@ -176,14 +178,13 @@ class FeatureExtractor:
         """Classify performance into tiers."""
         if engagement_rate >= 10.0:
             return "exceptional"
-        elif engagement_rate >= 5.0:
+        if engagement_rate >= 5.0:
             return "high"
-        elif engagement_rate >= 2.0:
+        if engagement_rate >= 2.0:
             return "medium"
-        elif engagement_rate >= 0.5:
+        if engagement_rate >= 0.5:
             return "low"
-        else:
-            return "poor"
+        return "poor"
 
 
 class PatternMiner:
@@ -194,8 +195,8 @@ class PatternMiner:
         self.min_confidence = min_confidence
 
     def mine_content_patterns(
-        self, posts: List[Dict[str, Any]]
-    ) -> List[StrategyPattern]:
+        self, posts: list[dict[str, Any]]
+    ) -> list[StrategyPattern]:
         """Mine content-based strategy patterns."""
         if not posts:
             return []
@@ -238,8 +239,8 @@ class PatternMiner:
         return patterns
 
     def mine_temporal_patterns(
-        self, posts: List[Dict[str, Any]]
-    ) -> List[StrategyPattern]:
+        self, posts: list[dict[str, Any]]
+    ) -> list[StrategyPattern]:
         """Mine temporal strategy patterns."""
         if not posts:
             return []
@@ -289,7 +290,7 @@ class PatternMiner:
 
     def mine_sequence_patterns(
         self, trajectory: PostTrajectory
-    ) -> List[StrategyPattern]:
+    ) -> list[StrategyPattern]:
         """Mine sequential patterns within a trajectory."""
         if len(trajectory.posts) < 2:
             return []
@@ -323,8 +324,8 @@ class PatternMiner:
         return patterns
 
     def _find_common_features(
-        self, feature_sets: List[Dict[str, Any]]
-    ) -> Dict[str, float]:
+        self, feature_sets: list[dict[str, Any]]
+    ) -> dict[str, float]:
         """Find features that appear frequently across feature sets."""
         if not feature_sets:
             return {}
@@ -338,7 +339,7 @@ class PatternMiner:
                 if isinstance(value, bool) and value:
                     feature_counts[feature] += 1
                     binary_features.add(feature)
-                elif isinstance(value, (int, float)) and value > 0:
+                elif isinstance(value, int | float) and value > 0:
                     feature_counts[feature] += 1
 
         # Calculate support (frequency)
@@ -353,8 +354,8 @@ class PatternMiner:
         return common_features
 
     def _analyze_performance_trend(
-        self, performance_curve: List[float]
-    ) -> Dict[str, Any]:
+        self, performance_curve: list[float]
+    ) -> dict[str, Any]:
         """Analyze the trend in performance over time."""
         if len(performance_curve) < 2:
             return {"trend": "flat", "strength": 0.0}
@@ -391,7 +392,7 @@ class TrajectoryBuilder:
     def __init__(self, max_time_gap: timedelta = timedelta(hours=24)):
         self.max_time_gap = max_time_gap
 
-    def build_trajectories(self, traces: List[Dict[str, Any]]) -> List[PostTrajectory]:
+    def build_trajectories(self, traces: list[dict[str, Any]]) -> list[PostTrajectory]:
         """Build trajectories from a list of traces."""
         if not traces:
             return []
@@ -422,7 +423,7 @@ class TrajectoryBuilder:
 
         return trajectories
 
-    def _build_single_trajectory(self, trace: Dict[str, Any]) -> PostTrajectory:
+    def _build_single_trajectory(self, trace: dict[str, Any]) -> PostTrajectory:
         """Build trajectory for a single post."""
         timestamp = self._parse_timestamp(trace.get("timestamp", ""))
 
@@ -436,7 +437,7 @@ class TrajectoryBuilder:
             trajectory_type="single",
         )
 
-    def _build_multi_trajectory(self, traces: List[Dict[str, Any]]) -> PostTrajectory:
+    def _build_multi_trajectory(self, traces: list[dict[str, Any]]) -> PostTrajectory:
         """Build trajectory for multiple related posts."""
         # Sort by timestamp
         sorted_traces = sorted(
@@ -492,7 +493,7 @@ class REERTrajectorySynthesizer:
 
     def __init__(
         self,
-        trace_store: Optional[REERTraceStore] = None,
+        trace_store: REERTraceStore | None = None,
         min_pattern_support: float = 0.1,
         min_pattern_confidence: float = 0.6,
     ):
@@ -508,10 +509,11 @@ class REERTrajectorySynthesizer:
         self.trajectory_builder = TrajectoryBuilder()
         self.feature_extractor = FeatureExtractor()
 
+    @memory_profile(operation_name="synthesize_strategies")
     async def synthesize_strategies(
         self,
-        traces: Optional[List[Dict[str, Any]]] = None,
-        provider_filter: Optional[str] = None,
+        traces: list[dict[str, Any]] | None = None,
+        provider_filter: str | None = None,
         min_score: float = 0.0,
         analysis_window_days: int = 30,
     ) -> StrategySynthesis:
@@ -534,9 +536,7 @@ class REERTrajectorySynthesizer:
                         "No traces provided and no trace store configured"
                     )
 
-                since = datetime.now(timezone.utc) - timedelta(
-                    days=analysis_window_days
-                )
+                since = datetime.now(timezone.utc) - timedelta(days=analysis_window_days)
                 traces = await self.trace_store.query_traces(
                     provider=provider_filter, min_score=min_score, since=since
                 )
@@ -544,26 +544,66 @@ class REERTrajectorySynthesizer:
             if not traces:
                 raise TrajectoryError("No traces available for synthesis")
 
-            # Build trajectories
-            trajectories = self.trajectory_builder.build_trajectories(traces)
+            # Check memory limits for large datasets
+            check_memory_limit()
 
-            # Extract patterns
-            all_patterns = []
+            # Process large datasets in chunks to manage memory
+            if len(traces) > 10000:
+                # Process in chunks for very large datasets
+                chunk_size = 5000
+                all_patterns = []
+                trajectories = []
 
-            # Mine content patterns
-            content_patterns = self.pattern_miner.mine_content_patterns(traces)
-            all_patterns.extend(content_patterns)
+                for i in range(0, len(traces), chunk_size):
+                    chunk_traces = traces[i : i + chunk_size]
 
-            # Mine temporal patterns
-            temporal_patterns = self.pattern_miner.mine_temporal_patterns(traces)
-            all_patterns.extend(temporal_patterns)
+                    with memory_context(f"process_chunk_{i//chunk_size}"):
+                        # Build trajectories for chunk
+                        chunk_trajectories = self.trajectory_builder.build_trajectories(
+                            chunk_traces
+                        )
+                        trajectories.extend(chunk_trajectories)
 
-            # Mine sequence patterns from trajectories
-            for trajectory in trajectories:
-                sequence_patterns = self.pattern_miner.mine_sequence_patterns(
-                    trajectory
-                )
-                all_patterns.extend(sequence_patterns)
+                        # Mine patterns for chunk
+                        content_patterns = self.pattern_miner.mine_content_patterns(
+                            chunk_traces
+                        )
+                        all_patterns.extend(content_patterns)
+
+                        temporal_patterns = self.pattern_miner.mine_temporal_patterns(
+                            chunk_traces
+                        )
+                        all_patterns.extend(temporal_patterns)
+
+                        # Mine sequence patterns from trajectories
+                        for trajectory in chunk_trajectories:
+                            sequence_patterns = (
+                                self.pattern_miner.mine_sequence_patterns(trajectory)
+                            )
+                            all_patterns.extend(sequence_patterns)
+
+                        check_memory_limit()
+            else:
+                # Build trajectories
+                trajectories = self.trajectory_builder.build_trajectories(traces)
+
+                # Extract patterns
+                all_patterns = []
+
+                # Mine content patterns
+                content_patterns = self.pattern_miner.mine_content_patterns(traces)
+                all_patterns.extend(content_patterns)
+
+                # Mine temporal patterns
+                temporal_patterns = self.pattern_miner.mine_temporal_patterns(traces)
+                all_patterns.extend(temporal_patterns)
+
+                # Mine sequence patterns from trajectories
+                for trajectory in trajectories:
+                    sequence_patterns = self.pattern_miner.mine_sequence_patterns(
+                        trajectory
+                    )
+                    all_patterns.extend(sequence_patterns)
 
             # Generate insights and recommendations
             performance_insights = self._analyze_performance_insights(
@@ -600,8 +640,8 @@ class REERTrajectorySynthesizer:
             )
 
     def _analyze_performance_insights(
-        self, traces: List[Dict[str, Any]], trajectories: List[PostTrajectory]
-    ) -> Dict[str, Any]:
+        self, traces: list[dict[str, Any]], trajectories: list[PostTrajectory]
+    ) -> dict[str, Any]:
         """Analyze performance insights from traces and trajectories."""
         scores = [trace.get("score", 0.0) for trace in traces]
 
@@ -625,13 +665,13 @@ class REERTrajectorySynthesizer:
                         if t.trajectory_type == ttype
                     ]
                 )
-                for ttype in set(t.trajectory_type for t in trajectories)
+                for ttype in {t.trajectory_type for t in trajectories}
             },
         }
 
     def _analyze_temporal_insights(
-        self, traces: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, traces: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Analyze temporal patterns in posting behavior."""
         temporal_data = []
 
@@ -680,7 +720,7 @@ class REERTrajectorySynthesizer:
             ),
         }
 
-    def _analyze_content_insights(self, traces: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_content_insights(self, traces: list[dict[str, Any]]) -> dict[str, Any]:
         """Analyze content patterns and their performance."""
         content_data = []
 
@@ -746,11 +786,11 @@ class REERTrajectorySynthesizer:
 
     def _generate_recommendations(
         self,
-        patterns: List[StrategyPattern],
-        performance_insights: Dict[str, Any],
-        temporal_insights: Dict[str, Any],
-        content_insights: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
+        patterns: list[StrategyPattern],
+        performance_insights: dict[str, Any],
+        temporal_insights: dict[str, Any],
+        content_insights: dict[str, Any],
+    ) -> list[dict[str, Any]]:
         """Generate actionable strategy recommendations."""
         recommendations = []
 
@@ -801,9 +841,9 @@ class REERTrajectorySynthesizer:
 
     def _calculate_synthesis_confidence(
         self,
-        patterns: List[StrategyPattern],
-        traces: List[Dict[str, Any]],
-        trajectories: List[PostTrajectory],
+        patterns: list[StrategyPattern],
+        traces: list[dict[str, Any]],
+        trajectories: list[PostTrajectory],
     ) -> float:
         """Calculate confidence in the synthesis results."""
         factors = []
@@ -820,7 +860,7 @@ class REERTrajectorySynthesizer:
             factors.append(0.3)  # Low confidence if no patterns
 
         # Trajectory diversity factor
-        trajectory_types = set(t.trajectory_type for t in trajectories)
+        trajectory_types = {t.trajectory_type for t in trajectories}
         diversity_factor = min(len(trajectory_types) / 3, 1.0)  # Full at 3+ types
         factors.append(diversity_factor)
 

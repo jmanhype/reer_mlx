@@ -5,18 +5,17 @@ based on URI schemes (mlx::/dspy::/dummy::) and automatic adapter selection.
 """
 
 import asyncio
-import logging
-import re
-from typing import Dict, Any, List, Optional, Union, Type, Callable
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+import logging
+import re
+from typing import Any
 from urllib.parse import urlparse
-from abc import ABC, abstractmethod
 
-from .mlx_lm import MLXLanguageModelAdapter, MLXModelFactory, BaseLMAdapter
+from core.exceptions import ValidationError
+
 from .dspy_lm import DSPyLanguageModelAdapter, DSPyModelFactory
-from core.exceptions import ValidationError, ScoringError
-
+from .mlx_lm import BaseLMAdapter, MLXLanguageModelAdapter, MLXModelFactory
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +26,11 @@ class ProviderConfig:
 
     name: str
     scheme: str  # URI scheme (e.g., 'mlx', 'dspy', 'dummy')
-    adapter_class: Type[BaseLMAdapter]
-    factory_class: Optional[Type] = None
-    default_model: Optional[str] = None
-    supported_models: List[str] = field(default_factory=list)
-    capabilities: List[str] = field(default_factory=list)
+    adapter_class: type[BaseLMAdapter]
+    factory_class: type | None = None
+    default_model: str | None = None
+    supported_models: list[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
     priority: int = 100  # Lower number = higher priority
 
 
@@ -42,7 +41,7 @@ class ModelReference:
     uri: str  # Full URI (e.g., "mlx://llama-3.2-3b-instruct")
     provider: str  # Provider name
     model_path: str  # Model path/name
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    parameters: dict[str, Any] = field(default_factory=dict)
 
 
 class DummyLanguageModelAdapter(BaseLMAdapter):
@@ -71,8 +70,8 @@ class DummyLanguageModelAdapter(BaseLMAdapter):
     async def generate(
         self,
         prompt: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs,
     ) -> str:
         """Generate dummy text.
@@ -97,10 +96,7 @@ class DummyLanguageModelAdapter(BaseLMAdapter):
         response = base_response.format(model=self.model_name)
 
         # Add prompt context
-        if len(prompt) > 50:
-            context = prompt[:50] + "..."
-        else:
-            context = prompt
+        context = prompt[:50] + "..." if len(prompt) > 50 else prompt
 
         full_response = f"Based on '{context}': {response}"
 
@@ -115,8 +111,8 @@ class DummyLanguageModelAdapter(BaseLMAdapter):
     async def generate_stream(
         self,
         prompt: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs,
     ) -> AsyncIterator[str]:
         """Generate streaming dummy text.
@@ -155,10 +151,9 @@ class DummyLanguageModelAdapter(BaseLMAdapter):
 
         if words < 10:
             return 15.0  # Short text, higher perplexity
-        elif words < 50:
+        if words < 50:
             return 8.0  # Medium text, good perplexity
-        else:
-            return 12.0  # Long text, slightly higher perplexity
+        return 12.0  # Long text, slightly higher perplexity
 
     def is_available(self) -> bool:
         """Dummy adapter is always available."""
@@ -170,9 +165,9 @@ class LanguageModelRegistry:
 
     def __init__(self):
         """Initialize the registry."""
-        self._providers: Dict[str, ProviderConfig] = {}
-        self._adapters: Dict[str, BaseLMAdapter] = {}  # Cached adapters
-        self._default_provider: Optional[str] = None
+        self._providers: dict[str, ProviderConfig] = {}
+        self._adapters: dict[str, BaseLMAdapter] = {}  # Cached adapters
+        self._default_provider: str | None = None
 
         # Register built-in providers
         self._register_builtin_providers()
@@ -253,7 +248,7 @@ class LanguageModelRegistry:
         self._providers[config.name] = config
         logger.info(f"Registered provider: {config.name} (scheme: {config.scheme})")
 
-    def get_provider(self, name: str) -> Optional[ProviderConfig]:
+    def get_provider(self, name: str) -> ProviderConfig | None:
         """Get provider configuration by name.
 
         Args:
@@ -264,7 +259,7 @@ class LanguageModelRegistry:
         """
         return self._providers.get(name)
 
-    def list_providers(self) -> List[ProviderConfig]:
+    def list_providers(self) -> list[ProviderConfig]:
         """List all registered providers.
 
         Returns:
@@ -375,17 +370,16 @@ class LanguageModelRegistry:
                 adapter = DummyLanguageModelAdapter(
                     model_name=model_ref.model_path, **all_params
                 )
+            # Use factory if available
+            elif provider_config.factory_class:
+                adapter = provider_config.factory_class.create_adapter(
+                    model_ref.model_path, **all_params
+                )
             else:
-                # Use factory if available
-                if provider_config.factory_class:
-                    adapter = provider_config.factory_class.create_adapter(
-                        model_ref.model_path, **all_params
-                    )
-                else:
-                    # Direct instantiation
-                    adapter = provider_config.adapter_class(
-                        model_ref.model_path, **all_params
-                    )
+                # Direct instantiation
+                adapter = provider_config.adapter_class(
+                    model_ref.model_path, **all_params
+                )
 
             # Cache the adapter
             self._adapters[cache_key] = adapter
@@ -394,14 +388,14 @@ class LanguageModelRegistry:
             return adapter
 
         except Exception as e:
-            logger.error(f"Failed to create adapter for {uri}: {e}")
+            logger.exception(f"Failed to create adapter for {uri}: {e}")
             raise ValidationError(f"Adapter creation failed: {e}")
 
     async def _create_mlx_adapter(
-        self, model_ref: ModelReference, params: Dict[str, Any]
+        self, model_ref: ModelReference, params: dict[str, Any]
     ) -> MLXLanguageModelAdapter:
         """Create MLX adapter with proper configuration."""
-        from .mlx_lm import MLXModelConfig, MLXGenerationConfig
+        from .mlx_lm import MLXGenerationConfig, MLXModelConfig
 
         # Split parameters into model and generation configs
         model_params = {
@@ -433,7 +427,7 @@ class LanguageModelRegistry:
         return adapter
 
     async def _create_dspy_adapter(
-        self, model_ref: ModelReference, params: Dict[str, Any]
+        self, model_ref: ModelReference, params: dict[str, Any]
     ) -> DSPyLanguageModelAdapter:
         """Create DSPy adapter with proper configuration."""
         from .dspy_lm import DSPyConfig
@@ -517,8 +511,7 @@ class LanguageModelRegistry:
 
         if prefer_local:
             return models["local"]
-        else:
-            return models["cloud"]
+        return models["cloud"]
 
     def set_default_provider(self, provider_name: str) -> None:
         """Set the default provider for scheme-less URIs.
@@ -540,7 +533,7 @@ class LanguageModelRegistry:
         self._adapters.clear()
         logger.info("Cleared adapter cache")
 
-    async def health_check(self) -> Dict[str, Dict[str, Any]]:
+    async def health_check(self) -> dict[str, dict[str, Any]]:
         """Check health of all providers.
 
         Returns:

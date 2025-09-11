@@ -7,31 +7,30 @@ Following London School TDD with mock-first approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-import pytest
-import json
-import asyncio
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock, MagicMock, call
-from typing import Dict, Any, List, Optional, Union
+from datetime import datetime
+from datetime import timezone
+from typing import Any
+from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
-import time
+
+import pytest
 
 # Import statements that will fail initially (RED phase)
 try:
-    from provider_management.provider_manager import ProviderManager
-    from provider_management.mlx_provider import MLXProvider
     from provider_management.dspy_provider import DSPyProvider
-    from provider_management.load_balancer import LoadBalancer
-    from provider_management.health_monitor import HealthMonitor
     from provider_management.failover_manager import FailoverManager
+    from provider_management.health_monitor import HealthMonitor
+    from provider_management.load_balancer import LoadBalancer
+    from provider_management.mlx_provider import MLXProvider
     from provider_management.performance_tracker import PerformanceTracker
+    from provider_management.provider_manager import ProviderManager
     from provider_management.schemas import (
         ProviderConfig,
         ProviderStatus,
         SwitchingDecision,
     )
-    from core.exceptions import ProviderError, SwitchingError, LoadBalancingError
+
+    from core.exceptions import LoadBalancingError, ProviderError, SwitchingError
 except ImportError:
     # Expected during RED phase - create mock classes for contract testing
     class ProviderManager:
@@ -89,7 +88,7 @@ class TestProviderSwitchingIntegration:
     """
 
     @pytest.fixture
-    def mlx_provider_config(self) -> Dict[str, Any]:
+    def mlx_provider_config(self) -> dict[str, Any]:
         """MLX provider configuration."""
         return {
             "provider_id": "mlx_primary",
@@ -128,7 +127,7 @@ class TestProviderSwitchingIntegration:
         }
 
     @pytest.fixture
-    def dspy_provider_config(self) -> Dict[str, Any]:
+    def dspy_provider_config(self) -> dict[str, Any]:
         """DSPy provider configuration."""
         return {
             "provider_id": "dspy_primary",
@@ -167,7 +166,7 @@ class TestProviderSwitchingIntegration:
         }
 
     @pytest.fixture
-    def sample_generation_request(self) -> Dict[str, Any]:
+    def sample_generation_request(self) -> dict[str, Any]:
         """Sample generation request for provider testing."""
         return {
             "request_id": str(uuid4()),
@@ -193,7 +192,7 @@ class TestProviderSwitchingIntegration:
         }
 
     @pytest.fixture
-    def mock_mlx_provider(self, mlx_provider_config: Dict[str, Any]) -> Mock:
+    def mock_mlx_provider(self, mlx_provider_config: dict[str, Any]) -> Mock:
         """Mock MLX provider with behavior contracts."""
         provider = Mock(spec=MLXProvider)
         provider.config = mlx_provider_config
@@ -208,7 +207,7 @@ class TestProviderSwitchingIntegration:
         return provider
 
     @pytest.fixture
-    def mock_dspy_provider(self, dspy_provider_config: Dict[str, Any]) -> Mock:
+    def mock_dspy_provider(self, dspy_provider_config: dict[str, Any]) -> Mock:
         """Mock DSPy provider with behavior contracts."""
         provider = Mock(spec=DSPyProvider)
         provider.config = dspy_provider_config
@@ -296,7 +295,7 @@ class TestProviderSwitchingIntegration:
         mock_provider_manager: Mock,
         mock_mlx_provider: Mock,
         mock_dspy_provider: Mock,
-        sample_generation_request: Dict[str, Any],
+        sample_generation_request: dict[str, Any],
     ):
         """Test automatic failover from MLX to DSPy when MLX fails."""
         # Arrange
@@ -343,7 +342,7 @@ class TestProviderSwitchingIntegration:
         mock_provider_manager: Mock,
         mock_load_balancer: Mock,
         mock_performance_tracker: Mock,
-        sample_generation_request: Dict[str, Any],
+        sample_generation_request: dict[str, Any],
     ):
         """Test provider selection based on performance metrics."""
         # Arrange
@@ -404,7 +403,7 @@ class TestProviderSwitchingIntegration:
         self,
         mock_provider_manager: Mock,
         mock_load_balancer: Mock,
-        sample_generation_request: Dict[str, Any],
+        sample_generation_request: dict[str, Any],
     ):
         """Test load balancing across multiple providers."""
         # Arrange
@@ -557,6 +556,7 @@ class TestProviderSwitchingIntegration:
                         "match_score": 0.95,
                         "capabilities_matched": cap_req["required_capabilities"],
                     }
+            return None
 
         mock_provider_manager.get_optimal_provider.side_effect = (
             mock_get_optimal_provider
@@ -632,7 +632,7 @@ class TestProviderSwitchingIntegration:
         mock_provider_manager: Mock,
         mock_mlx_provider: Mock,
         mock_dspy_provider: Mock,
-        sample_generation_request: Dict[str, Any],
+        sample_generation_request: dict[str, Any],
     ):
         """Test handling of cascading failures across providers."""
         # Arrange
@@ -665,7 +665,7 @@ class TestProviderSwitchingIntegration:
         self,
         mock_provider_manager: Mock,
         mock_performance_tracker: Mock,
-        sample_generation_request: Dict[str, Any],
+        sample_generation_request: dict[str, Any],
     ):
         """Test graceful degradation when providers are under stress."""
         # Arrange
@@ -721,7 +721,7 @@ class TestProviderSwitchingIntegration:
         self,
         mock_provider_manager: Mock,
         mock_mlx_provider: Mock,
-        sample_generation_request: Dict[str, Any],
+        sample_generation_request: dict[str, Any],
     ):
         """Test circuit breaker pattern for failing providers."""
         # Arrange
@@ -735,23 +735,8 @@ class TestProviderSwitchingIntegration:
         ]
         mock_mlx_provider.generate.side_effect = failure_sequence
 
-        circuit_breaker_states = [
-            {"state": "closed", "failure_count": 1, "threshold": 5},
-            {"state": "closed", "failure_count": 2, "threshold": 5},
-            {"state": "closed", "failure_count": 3, "threshold": 5},
-            {"state": "closed", "failure_count": 4, "threshold": 5},
-            {
-                "state": "open",
-                "failure_count": 5,
-                "threshold": 5,
-                "timeout_seconds": 30,
-            },
-        ]
-
         def mock_route_request(request):
-            failure_count = len(
-                [call for call in mock_mlx_provider.generate.call_args_list]
-            )
+            failure_count = len(list(mock_mlx_provider.generate.call_args_list))
             if failure_count >= 5:
                 return {
                     "circuit_breaker_open": True,
@@ -759,14 +744,13 @@ class TestProviderSwitchingIntegration:
                     "alternative_used": "dspy",
                     "content": "Circuit breaker fallback content",
                 }
-            else:
-                raise ProviderError(f"Failure {failure_count}")
+            raise ProviderError(f"Failure {failure_count}")
 
         mock_provider_manager.route_request.side_effect = mock_route_request
 
         # Act & Assert
         # First 4 requests should fail normally
-        for i in range(4):
+        for _i in range(4):
             with pytest.raises(ProviderError):
                 await mock_provider_manager.route_request(sample_generation_request)
 
@@ -935,7 +919,7 @@ class TestProviderSwitchingIntegration:
     # Advanced Scenarios and Edge Cases
 
     async def test_multi_tenant_provider_isolation(
-        self, mock_provider_manager: Mock, sample_generation_request: Dict[str, Any]
+        self, mock_provider_manager: Mock, sample_generation_request: dict[str, Any]
     ):
         """Test provider isolation and resource allocation for multi-tenant scenarios."""
         # Arrange
@@ -987,27 +971,6 @@ class TestProviderSwitchingIntegration:
     ):
         """Test handling of provider warm-up and cold start scenarios."""
         # Arrange
-        cold_start_scenario = {
-            "mlx": {
-                "status": "cold",
-                "warm_up_time_ms": 5000,
-                "first_request_latency_ms": 8000,
-                "subsequent_latency_ms": 850,
-            },
-            "dspy": {
-                "status": "warm",
-                "warm_up_time_ms": 0,
-                "first_request_latency_ms": 1200,
-                "subsequent_latency_ms": 1200,
-            },
-        }
-
-        warm_up_strategy = {
-            "strategy": "pre_warm_critical_providers",
-            "warm_up_triggers": ["traffic_increase", "scheduled_maintenance"],
-            "warm_up_sequence": ["mlx", "dspy"],
-            "success": True,
-        }
 
         mock_provider_manager.get_optimal_provider.return_value = {
             "provider": "dspy",  # Choose warm provider for immediate requests
@@ -1028,21 +991,6 @@ class TestProviderSwitchingIntegration:
     ):
         """Test handling of provider version compatibility and migration scenarios."""
         # Arrange
-        version_compatibility = {
-            "mlx": {
-                "current_version": "v2.1.0",
-                "supported_versions": ["v2.0.0", "v2.1.0"],
-                "deprecated_versions": ["v1.9.0"],
-                "migration_required": False,
-            },
-            "dspy": {
-                "current_version": "v0.3.5",
-                "supported_versions": ["v0.3.0", "v0.3.5", "v0.4.0-beta"],
-                "deprecated_versions": ["v0.2.x"],
-                "migration_required": True,
-                "migration_timeline": "2024-02-01",
-            },
-        }
 
         migration_plan = {
             "affected_provider": "dspy",

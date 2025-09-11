@@ -8,36 +8,34 @@ Provides advanced DSPy integration with:
 - Rate limiting integration
 """
 
-import asyncio
+from collections.abc import Callable
+from dataclasses import dataclass, field
+import json
 import logging
 import time
-from typing import Dict, Any, List, Optional, Union, Callable, TypeVar
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from contextlib import asynccontextmanager
-from abc import ABC, abstractmethod
-import json
+from typing import Any, TypeVar
 
 try:
     import dspy
-    from dspy import OpenAI, Anthropic, Together, ChatAdapter
-    from dspy.teleprompt import BootstrapFewShot, MIPRO, LabeledFewShot
+    from dspy import Anthropic, ChatAdapter, OpenAI, Together
     from dspy.evaluate import Evaluate
+    from dspy.teleprompt import MIPRO, BootstrapFewShot, LabeledFewShot
 
     DSPY_AVAILABLE = True
 except ImportError:
     DSPY_AVAILABLE = False
     dspy = None
 
-from .dspy_lm import DSPyConfig, DSPyLanguageModelAdapter
-from .lm_registry import LanguageModelRegistry, get_registry
-from core.exceptions import ValidationError, ScoringError, OptimizationError
+from core.exceptions import OptimizationError, ScoringError, ValidationError
 from core.integration import (
-    RateLimiter,
-    RateLimitConfig,
-    StructuredLogger,
     LoggingConfig,
+    RateLimitConfig,
+    RateLimiter,
+    StructuredLogger,
 )
+
+from .dspy_lm import DSPyLanguageModelAdapter
+from .lm_registry import get_registry
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +52,7 @@ class DSPyPipelineConfig:
     """Configuration for DSPy pipeline with provider routing."""
 
     primary_provider_uri: str
-    fallback_provider_uris: List[str] = field(default_factory=list)
+    fallback_provider_uris: list[str] = field(default_factory=list)
     rate_limit_config: RateLimitConfig = field(default_factory=RateLimitConfig)
     logging_config: LoggingConfig = field(default_factory=LoggingConfig)
     optimization_enabled: bool = True
@@ -71,20 +69,20 @@ class DSPyTemplate:
     name: str
     description: str
     input_signature: str  # e.g., "question, context -> answer"
-    system_prompt: Optional[str] = None
+    system_prompt: str | None = None
     reasoning_mode: bool = False
-    examples: List[Dict[str, Any]] = field(default_factory=list)
+    examples: list[dict[str, Any]] = field(default_factory=list)
     optimization_metric: str = "accuracy"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class DSPyExample:
     """Training/validation example for DSPy optimization."""
 
-    inputs: Dict[str, Any]
-    outputs: Dict[str, Any]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    inputs: dict[str, Any]
+    outputs: dict[str, Any]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 # ============================================================================
@@ -115,8 +113,8 @@ class DSPyModuleFactory:
     async def create_module(
         self,
         template: DSPyTemplate,
-        provider_uri: Optional[str] = None,
-        trace_id: Optional[str] = None,
+        provider_uri: str | None = None,
+        trace_id: str | None = None,
     ) -> "DSPyModule":
         """Create a DSPy module from template.
 
@@ -166,7 +164,7 @@ class DSPyModuleFactory:
             duration_ms = (time.time() - start_time) * 1000
             self.logger.log_with_context(
                 "INFO",
-                f"DSPy module created successfully",
+                "DSPy module created successfully",
                 trace_id=trace_id,
                 duration_ms=duration_ms,
                 provider_uri=provider_uri,
@@ -217,10 +215,10 @@ class DSPyModuleFactory:
     async def optimize_module(
         self,
         module: "DSPyModule",
-        training_examples: List[DSPyExample],
-        validation_examples: Optional[List[DSPyExample]] = None,
+        training_examples: list[DSPyExample],
+        validation_examples: list[DSPyExample] | None = None,
         optimization_method: str = "bootstrap",
-        trace_id: Optional[str] = None,
+        trace_id: str | None = None,
     ) -> "DSPyModule":
         """Optimize a DSPy module using training examples.
 
@@ -296,7 +294,7 @@ class DSPyModuleFactory:
 
             self.logger.log_with_context(
                 "INFO",
-                f"Module optimization completed successfully",
+                "Module optimization completed successfully",
                 trace_id=trace_id,
                 duration_ms=duration_ms,
                 method=optimization_method,
@@ -328,7 +326,7 @@ class DSPyModuleFactory:
         finally:
             self._metrics["optimizations_run"] += 1
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get factory performance metrics."""
         return self._metrics.copy()
 
@@ -347,7 +345,7 @@ class DSPyModule:
         adapter: DSPyLanguageModelAdapter,
         provider_uri: str,
         config: DSPyPipelineConfig,
-        trace_id: Optional[str] = None,
+        trace_id: str | None = None,
     ):
         self.template = template
         self.adapter = adapter
@@ -356,13 +354,13 @@ class DSPyModule:
         self.trace_id = trace_id
 
         # DSPy components
-        self.dspy_module: Optional[dspy.Module] = None
-        self.predictor: Optional[dspy.Predict] = None
+        self.dspy_module: dspy.Module | None = None
+        self.predictor: dspy.Predict | None = None
 
         # State
         self.is_initialized = False
         self.is_optimized = False
-        self.optimization_method: Optional[str] = None
+        self.optimization_method: str | None = None
 
         # Performance tracking
         self._metrics = {
@@ -452,12 +450,11 @@ class DSPyModule:
         # Return appropriate metric based on template
         if self.template.optimization_metric == "accuracy":
             return accuracy_metric
-        elif self.template.optimization_metric == "quality":
+        if self.template.optimization_metric == "quality":
             return quality_metric
-        else:
-            return accuracy_metric
+        return accuracy_metric
 
-    async def predict(self, **inputs) -> Dict[str, Any]:
+    async def predict(self, **inputs) -> dict[str, Any]:
         """Make a prediction using the DSPy module.
 
         Args:
@@ -516,7 +513,7 @@ class DSPyModule:
 
             self.logger.log_with_context(
                 "DEBUG",
-                f"Prediction completed successfully",
+                "Prediction completed successfully",
                 trace_id=self.trace_id,
                 duration_ms=duration * 1000,
             )
@@ -543,7 +540,7 @@ class DSPyModule:
         finally:
             self._metrics["predictions"] += 1
 
-    def _generate_cache_key(self, inputs: Dict[str, Any]) -> str:
+    def _generate_cache_key(self, inputs: dict[str, Any]) -> str:
         """Generate cache key for inputs."""
         import hashlib
 
@@ -555,17 +552,17 @@ class DSPyModule:
 
         return hashlib.md5(key_data.encode()).hexdigest()
 
-    def _get_cached_result(self, cache_key: str) -> Optional[Dict[str, Any]]:
+    def _get_cached_result(self, cache_key: str) -> dict[str, Any] | None:
         """Get cached result (stub implementation)."""
         # In a real implementation, this would use Redis or similar
         return None
 
-    def _cache_result(self, cache_key: str, result: Dict[str, Any]) -> None:
+    def _cache_result(self, cache_key: str, result: dict[str, Any]) -> None:
         """Cache result (stub implementation)."""
         # In a real implementation, this would use Redis or similar
         pass
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get module performance metrics."""
         return {
             **self._metrics,
@@ -587,8 +584,8 @@ class DSPyPipelineManager:
     def __init__(self, config: DSPyPipelineConfig):
         self.config = config
         self.factory = DSPyModuleFactory(config)
-        self.modules: Dict[str, DSPyModule] = {}
-        self.templates: Dict[str, DSPyTemplate] = {}
+        self.modules: dict[str, DSPyModule] = {}
+        self.templates: dict[str, DSPyTemplate] = {}
 
         # Performance tracking
         self._pipeline_metrics = {
@@ -615,8 +612,8 @@ class DSPyPipelineManager:
     async def get_module(
         self,
         template_name: str,
-        provider_uri: Optional[str] = None,
-        trace_id: Optional[str] = None,
+        provider_uri: str | None = None,
+        trace_id: str | None = None,
     ) -> DSPyModule:
         """Get or create a DSPy module."""
 
@@ -637,10 +634,10 @@ class DSPyPipelineManager:
     async def execute_pipeline(
         self,
         template_name: str,
-        inputs: Dict[str, Any],
-        provider_uri: Optional[str] = None,
-        trace_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        inputs: dict[str, Any],
+        provider_uri: str | None = None,
+        trace_id: str | None = None,
+    ) -> dict[str, Any]:
         """Execute a DSPy pipeline."""
 
         start_time = time.time()
@@ -674,7 +671,7 @@ class DSPyPipelineManager:
 
             self.logger.log_with_context(
                 "INFO",
-                f"Pipeline executed successfully",
+                "Pipeline executed successfully",
                 trace_id=trace_id,
                 duration_ms=duration * 1000,
                 template_name=template_name,
@@ -701,10 +698,10 @@ class DSPyPipelineManager:
     async def optimize_module(
         self,
         template_name: str,
-        training_examples: List[DSPyExample],
-        validation_examples: Optional[List[DSPyExample]] = None,
+        training_examples: list[DSPyExample],
+        validation_examples: list[DSPyExample] | None = None,
         optimization_method: str = "bootstrap",
-        trace_id: Optional[str] = None,
+        trace_id: str | None = None,
     ) -> None:
         """Optimize a module using training examples."""
 
@@ -726,7 +723,7 @@ class DSPyPipelineManager:
             method=optimization_method,
         )
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get comprehensive pipeline metrics."""
 
         # Collect module metrics
@@ -792,6 +789,6 @@ SOCIAL_MEDIA_TEMPLATES = {
 }
 
 
-def get_social_media_templates() -> Dict[str, DSPyTemplate]:
+def get_social_media_templates() -> dict[str, DSPyTemplate]:
     """Get pre-built social media templates."""
     return SOCIAL_MEDIA_TEMPLATES.copy()

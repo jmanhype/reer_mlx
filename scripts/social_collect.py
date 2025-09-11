@@ -8,23 +8,21 @@ Supports X (Twitter), Instagram, TikTok, and other social platforms.
 
 import asyncio
 import json
-import sys
 from pathlib import Path
-from typing import Optional, List
-import typer
+import sys
+
+from loguru import logger
+from rich import print as rprint
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
-from rich.panel import Panel
-from rich import print as rprint
-from loguru import logger
+import typer
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from social.collectors import XAnalyticsNormalizer
-from social import ContentBrief, Platform
 
 app = typer.Typer(
     name="social-collect",
@@ -53,16 +51,16 @@ def collect(
         "-o",
         help="Output directory for collected data",
     ),
-    config_file: Optional[Path] = typer.Option(
+    config_file: Path | None = typer.Option(
         None, "--config", "-c", help="Configuration file path"
     ),
-    hashtags: Optional[List[str]] = typer.Option(
+    hashtags: list[str] | None = typer.Option(
         None,
         "--hashtag",
         "-h",
         help="Hashtags to search for (can be used multiple times)",
     ),
-    keywords: Optional[List[str]] = typer.Option(
+    keywords: list[str] | None = typer.Option(
         None,
         "--keyword",
         "-k",
@@ -157,7 +155,7 @@ def collect(
             )
         )
 
-        console.print(f"[green]✓ Data collection completed successfully![/green]")
+        console.print("[green]✓ Data collection completed successfully![/green]")
         console.print(f"[cyan]Output saved to:[/cyan] {output_dir}")
 
     except Exception as e:
@@ -169,8 +167,8 @@ def collect(
 async def _collect_data(
     platform: str,
     output_dir: Path,
-    hashtags: Optional[List[str]],
-    keywords: Optional[List[str]],
+    hashtags: list[str] | None,
+    keywords: list[str] | None,
     limit: int,
     days_back: int,
     include_engagement: bool,
@@ -187,7 +185,7 @@ async def _collect_data(
 
         # Initialize collector based on platform
         if platform == "x":
-            collector = XAnalyticsNormalizer()
+            XAnalyticsNormalizer()
             task = progress.add_task("Collecting X/Twitter data...", total=None)
         else:
             # For now, we only have X collector implemented
@@ -301,7 +299,7 @@ def status(
 @app.command()
 def validate(
     input_file: Path = typer.Argument(..., help="Data file to validate"),
-    schema_file: Optional[Path] = typer.Option(
+    schema_file: Path | None = typer.Option(
         None, "--schema", "-s", help="Schema file for validation"
     ),
 ):

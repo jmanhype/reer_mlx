@@ -6,15 +6,17 @@ metadata. Following London School TDD with mock-first approach and behavior veri
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
+from datetime import datetime, timedelta
+from datetime import timezone
 import json
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timezone, timedelta
-from uuid import uuid4, UUID
-from typing import Dict, Any, List
-from jsonschema import validate, ValidationError, Draft7Validator
+from typing import Any
+from unittest.mock import Mock, patch
+from uuid import uuid4
+
+from jsonschema import Draft7Validator, ValidationError, validate
 from jsonschema.exceptions import SchemaError
+import pytest
 
 
 class TestTimelineSchemaContract:
@@ -36,7 +38,7 @@ class TestTimelineSchemaContract:
         )
 
     @pytest.fixture
-    def timeline_schema(self, schema_path: Path) -> Dict[str, Any]:
+    def timeline_schema(self, schema_path: Path) -> dict[str, Any]:
         """Load the timeline JSON schema."""
         with open(schema_path) as f:
             return json.load(f)
@@ -51,7 +53,7 @@ class TestTimelineSchemaContract:
         return validator
 
     @pytest.fixture
-    def valid_timeline_data(self) -> Dict[str, Any]:
+    def valid_timeline_data(self) -> dict[str, Any]:
         """Valid timeline data that should pass schema validation."""
         future_time = datetime.now(timezone.utc) + timedelta(hours=2)
         past_time = datetime.now(timezone.utc) - timedelta(hours=1)
@@ -76,7 +78,7 @@ class TestTimelineSchemaContract:
 
     # Schema Structure and Metadata Tests
 
-    def test_schema_has_required_metadata(self, timeline_schema: Dict[str, Any]):
+    def test_schema_has_required_metadata(self, timeline_schema: dict[str, Any]):
         """Test that schema contains required JSON Schema Draft 7 metadata."""
         assert timeline_schema["$schema"] == "http://json-schema.org/draft-07/schema#"
         assert (
@@ -89,17 +91,17 @@ class TestTimelineSchemaContract:
         assert "description" in timeline_schema
 
     def test_schema_validation_contract(
-        self, timeline_schema: Dict[str, Any], mock_validator: Mock
+        self, timeline_schema: dict[str, Any], mock_validator: Mock
     ):
         """Test schema validation behavior contract."""
         # This will fail initially - testing the contract, not implementation
         with patch("jsonschema.Draft7Validator", return_value=mock_validator):
-            validator = Draft7Validator(timeline_schema)
+            Draft7Validator(timeline_schema)
 
             # Verify validator was created with our schema
             mock_validator.check_schema.assert_called_once()
 
-    def test_schema_is_valid_json_schema(self, timeline_schema: Dict[str, Any]):
+    def test_schema_is_valid_json_schema(self, timeline_schema: dict[str, Any]):
         """Test that the schema itself is a valid JSON Schema Draft 7."""
         # This will fail if schema has structural issues
         try:
@@ -109,7 +111,7 @@ class TestTimelineSchemaContract:
 
     # Required Fields Validation Tests
 
-    def test_all_required_fields_present(self, timeline_schema: Dict[str, Any]):
+    def test_all_required_fields_present(self, timeline_schema: dict[str, Any]):
         """Test that all required fields are defined in schema."""
         required_fields = {
             "id",
@@ -123,7 +125,7 @@ class TestTimelineSchemaContract:
         assert schema_required == required_fields
 
     def test_missing_required_field_validation_fails(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that missing any required field causes validation failure."""
         required_fields = timeline_schema["required"]
@@ -139,7 +141,7 @@ class TestTimelineSchemaContract:
                 validate(invalid_data, timeline_schema)
 
     def test_drafts_array_item_required_fields(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that drafts array items have all required fields."""
         draft_item_schema = timeline_schema["properties"]["drafts"]["items"]
@@ -158,7 +160,7 @@ class TestTimelineSchemaContract:
     # Type Checking Tests
 
     def test_id_must_be_uuid_format(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that id field must be valid UUID format."""
         id_schema = timeline_schema["properties"]["id"]
@@ -176,7 +178,7 @@ class TestTimelineSchemaContract:
                 validate(invalid_data, timeline_schema)
 
     def test_scheduled_time_must_be_datetime_format(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that scheduled_time field must be valid ISO 8601 datetime."""
         scheduled_time_schema = timeline_schema["properties"]["scheduled_time"]
@@ -199,7 +201,7 @@ class TestTimelineSchemaContract:
                 validate(invalid_data, timeline_schema)
 
     def test_candidate_id_must_be_uuid_format(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that candidate_id field must be valid UUID format."""
         candidate_id_schema = timeline_schema["properties"]["candidate_id"]
@@ -217,7 +219,7 @@ class TestTimelineSchemaContract:
                 validate(invalid_data, timeline_schema)
 
     def test_topic_must_be_string(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that topic field must be string."""
         topic_schema = timeline_schema["properties"]["topic"]
@@ -234,7 +236,7 @@ class TestTimelineSchemaContract:
                 validate(invalid_data, timeline_schema)
 
     def test_drafts_array_validation(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that drafts is array of objects with proper structure."""
         drafts_schema = timeline_schema["properties"]["drafts"]
@@ -252,7 +254,7 @@ class TestTimelineSchemaContract:
                 validate(invalid_data, timeline_schema)
 
     def test_draft_candidate_id_uuid_format(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that draft candidate_id must be valid UUID format."""
         draft_candidate_schema = timeline_schema["properties"]["drafts"]["items"][
@@ -269,7 +271,7 @@ class TestTimelineSchemaContract:
             validate(invalid_data, timeline_schema)
 
     def test_draft_score_range_validation(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that draft score must be number between 0.0 and 1.0."""
         draft_score_schema = timeline_schema["properties"]["drafts"]["items"][
@@ -290,7 +292,7 @@ class TestTimelineSchemaContract:
                 validate(invalid_data, timeline_schema)
 
     def test_draft_selected_boolean_validation(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that draft selected must be boolean."""
         draft_selected_schema = timeline_schema["properties"]["drafts"]["items"][
@@ -309,7 +311,7 @@ class TestTimelineSchemaContract:
                 validate(invalid_data, timeline_schema)
 
     def test_publication_status_enum_validation(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that publication_status is one of allowed enum values."""
         status_schema = timeline_schema["properties"]["publication_status"]
@@ -327,7 +329,7 @@ class TestTimelineSchemaContract:
                 validate(invalid_data, timeline_schema)
 
     def test_actual_publish_time_datetime_format(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that actual_publish_time field must be valid ISO 8601 datetime when present."""
         publish_time_schema = timeline_schema["properties"]["actual_publish_time"]
@@ -350,7 +352,7 @@ class TestTimelineSchemaContract:
                 validate(invalid_data, timeline_schema)
 
     def test_performance_metrics_validation(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that performance metrics have proper types and constraints."""
         performance_schema = timeline_schema["properties"]["performance"]["properties"]
@@ -396,7 +398,7 @@ class TestTimelineSchemaContract:
     # Edge Cases and Invalid Data Tests
 
     def test_additional_properties_not_allowed(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that additional properties are not allowed."""
         assert timeline_schema["additionalProperties"] is False
@@ -411,7 +413,7 @@ class TestTimelineSchemaContract:
             validate(invalid_data, timeline_schema)
 
     def test_null_values_rejected(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that null values are rejected for required fields."""
         required_fields = timeline_schema["required"]
@@ -424,7 +426,7 @@ class TestTimelineSchemaContract:
                 validate(invalid_data, timeline_schema)
 
     def test_empty_drafts_array_validation(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test behavior with empty drafts array."""
         # Empty drafts array should be valid (no minItems constraint)
@@ -437,7 +439,7 @@ class TestTimelineSchemaContract:
             pytest.fail(f"Empty drafts array should be valid: {e}")
 
     def test_empty_strings_validation(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test behavior with empty strings for string fields."""
         # Empty topic should be invalid (though not explicitly constrained in schema)
@@ -451,7 +453,7 @@ class TestTimelineSchemaContract:
             pass  # Expected if schema has constraints
 
     def test_boundary_values_validation(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test boundary values for numeric constraints."""
         # Test boundary values that should be valid
@@ -472,10 +474,7 @@ class TestTimelineSchemaContract:
                 parts = field_path.replace("[", ".").replace("]", "").split(".")
                 target = test_data
                 for part in parts[:-1]:
-                    if part.isdigit():
-                        target = target[int(part)]
-                    else:
-                        target = target[part]
+                    target = target[int(part)] if part.isdigit() else target[part]
                 target[parts[-1]] = value
             elif "." in field_path:
                 parent, child = field_path.split(".", 1)
@@ -492,7 +491,7 @@ class TestTimelineSchemaContract:
                 )
 
     def test_optional_fields_behavior(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that optional fields can be omitted."""
         optional_fields = ["actual_publish_time", "performance"]
@@ -513,7 +512,7 @@ class TestTimelineSchemaContract:
 
     # Schema Version Compatibility Tests
 
-    def test_schema_version_compatibility(self, timeline_schema: Dict[str, Any]):
+    def test_schema_version_compatibility(self, timeline_schema: dict[str, Any]):
         """Test schema version is properly defined for compatibility tracking."""
         assert "version" in timeline_schema
         assert timeline_schema["version"] == "1.0.0"
@@ -524,7 +523,7 @@ class TestTimelineSchemaContract:
 
         assert re.match(version_pattern, timeline_schema["version"])
 
-    def test_schema_id_uniqueness(self, timeline_schema: Dict[str, Any]):
+    def test_schema_id_uniqueness(self, timeline_schema: dict[str, Any]):
         """Test that schema has unique identifier for version tracking."""
         assert "$id" in timeline_schema
         schema_id = timeline_schema["$id"]
@@ -537,8 +536,8 @@ class TestTimelineSchemaContract:
     def test_validation_interaction_contract(
         self,
         mock_validate: Mock,
-        timeline_schema: Dict[str, Any],
-        valid_timeline_data: Dict[str, Any],
+        timeline_schema: dict[str, Any],
+        valid_timeline_data: dict[str, Any],
     ):
         """Test the interaction contract with jsonschema validation."""
         # This tests HOW validation is called, not WHAT it validates
@@ -550,7 +549,7 @@ class TestTimelineSchemaContract:
         # Verify the interaction occurred with correct parameters
         mock_validate.assert_called_once_with(valid_timeline_data, timeline_schema)
 
-    def test_error_handling_contract(self, timeline_schema: Dict[str, Any]):
+    def test_error_handling_contract(self, timeline_schema: dict[str, Any]):
         """Test that validation errors are properly raised and structured."""
         invalid_data = {"invalid": "data"}
 
@@ -565,7 +564,7 @@ class TestTimelineSchemaContract:
             assert hasattr(e, "schema_path")
 
     def test_valid_data_contract_success(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test that valid data passes validation contract."""
         # This will fail initially since we're testing the contract
@@ -582,7 +581,7 @@ class TestTimelineSchemaContract:
     # Performance and Edge Case Tests
 
     def test_large_drafts_array(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test validation with large drafts array."""
         test_data = valid_timeline_data.copy()
@@ -605,7 +604,7 @@ class TestTimelineSchemaContract:
             pytest.fail(f"Large drafts array should be valid: {e}")
 
     def test_unicode_topic_handling(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test validation with Unicode topic."""
         test_data = valid_timeline_data.copy()
@@ -617,7 +616,7 @@ class TestTimelineSchemaContract:
         except ValidationError as e:
             pytest.fail(f"Unicode topic should be valid: {e}")
 
-    def test_minimal_valid_timeline(self, timeline_schema: Dict[str, Any]):
+    def test_minimal_valid_timeline(self, timeline_schema: dict[str, Any]):
         """Test minimal timeline with only required fields."""
         minimal_data = {
             "id": str(uuid4()),
@@ -635,7 +634,7 @@ class TestTimelineSchemaContract:
             pytest.fail(f"Minimal valid timeline should pass: {e}")
 
     def test_multiple_selected_drafts_edge_case(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test edge case with multiple selected drafts."""
         test_data = valid_timeline_data.copy()
@@ -650,7 +649,7 @@ class TestTimelineSchemaContract:
             pytest.fail(f"Multiple selected drafts should be valid per schema: {e}")
 
     def test_no_selected_drafts_edge_case(
-        self, timeline_schema: Dict[str, Any], valid_timeline_data: Dict[str, Any]
+        self, timeline_schema: dict[str, Any], valid_timeline_data: dict[str, Any]
     ):
         """Test edge case with no selected drafts."""
         test_data = valid_timeline_data.copy()

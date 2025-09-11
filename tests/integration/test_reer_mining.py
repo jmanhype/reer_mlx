@@ -7,24 +7,23 @@ formulation. Following London School TDD with mock-first approach.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-import pytest
-import json
-import asyncio
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock, MagicMock, call
-from typing import Dict, Any, List, Optional, Set
+from datetime import datetime
+from datetime import timezone
+from typing import Any
+from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
-import numpy as np
+
+import pytest
 
 # Import statements that will fail initially (RED phase)
 try:
-    from reer_mining.strategy_extractor import REERStrategyExtractor
-    from reer_mining.pattern_analyzer import PatternAnalyzer
     from reer_mining.feature_detector import FeatureDetector
-    from reer_mining.strategy_synthesizer import StrategySynthesizer
     from reer_mining.mining_pipeline import REERMiningPipeline
-    from reer_mining.schemas import HistoricalPost, ExtractedStrategy, StrategyPattern
+    from reer_mining.pattern_analyzer import PatternAnalyzer
+    from reer_mining.schemas import ExtractedStrategy, HistoricalPost, StrategyPattern
+    from reer_mining.strategy_extractor import REERStrategyExtractor
+    from reer_mining.strategy_synthesizer import StrategySynthesizer
+
     from core.exceptions import ExtractionError, PatternAnalysisError, SynthesisError
 except ImportError:
     # Expected during RED phase - create mock classes for contract testing
@@ -77,7 +76,7 @@ class TestREERMiningIntegration:
     """
 
     @pytest.fixture
-    def sample_historical_posts(self) -> List[Dict[str, Any]]:
+    def sample_historical_posts(self) -> list[dict[str, Any]]:
         """Sample historical posts for strategy extraction."""
         return [
             {
@@ -151,7 +150,7 @@ class TestREERMiningIntegration:
         ]
 
     @pytest.fixture
-    def expected_extracted_patterns(self) -> List[Dict[str, Any]]:
+    def expected_extracted_patterns(self) -> list[dict[str, Any]]:
         """Expected patterns extracted from historical posts."""
         return [
             {
@@ -208,7 +207,7 @@ class TestREERMiningIntegration:
         ]
 
     @pytest.fixture
-    def expected_synthesized_strategy(self) -> Dict[str, Any]:
+    def expected_synthesized_strategy(self) -> dict[str, Any]:
         """Expected synthesized strategy from pattern analysis."""
         return {
             "strategy_id": str(uuid4()),
@@ -329,9 +328,9 @@ class TestREERMiningIntegration:
     async def test_complete_strategy_extraction_pipeline(
         self,
         mock_mining_pipeline: Mock,
-        sample_historical_posts: List[Dict[str, Any]],
-        expected_extracted_patterns: List[Dict[str, Any]],
-        expected_synthesized_strategy: Dict[str, Any],
+        sample_historical_posts: list[dict[str, Any]],
+        expected_extracted_patterns: list[dict[str, Any]],
+        expected_synthesized_strategy: dict[str, Any],
     ):
         """Test complete REER pipeline: analyze → extract → synthesize."""
         # Arrange
@@ -368,8 +367,8 @@ class TestREERMiningIntegration:
     async def test_pattern_analysis_with_statistical_validation(
         self,
         mock_pattern_analyzer: Mock,
-        sample_historical_posts: List[Dict[str, Any]],
-        expected_extracted_patterns: List[Dict[str, Any]],
+        sample_historical_posts: list[dict[str, Any]],
+        expected_extracted_patterns: list[dict[str, Any]],
     ):
         """Test pattern analysis with statistical significance validation."""
         # Arrange
@@ -404,7 +403,7 @@ class TestREERMiningIntegration:
         assert validation["sample_size_adequate"] is True
 
     async def test_multi_dimensional_feature_detection(
-        self, mock_feature_detector: Mock, sample_historical_posts: List[Dict[str, Any]]
+        self, mock_feature_detector: Mock, sample_historical_posts: list[dict[str, Any]]
     ):
         """Test comprehensive feature detection across multiple dimensions."""
         # Arrange
@@ -454,8 +453,8 @@ class TestREERMiningIntegration:
     async def test_strategy_synthesis_with_optimization(
         self,
         mock_strategy_synthesizer: Mock,
-        expected_extracted_patterns: List[Dict[str, Any]],
-        expected_synthesized_strategy: Dict[str, Any],
+        expected_extracted_patterns: list[dict[str, Any]],
+        expected_synthesized_strategy: dict[str, Any],
     ):
         """Test strategy synthesis with component optimization."""
         # Arrange
@@ -507,7 +506,7 @@ class TestREERMiningIntegration:
     async def test_platform_specific_strategy_adaptation(
         self,
         mock_strategy_synthesizer: Mock,
-        expected_synthesized_strategy: Dict[str, Any],
+        expected_synthesized_strategy: dict[str, Any],
     ):
         """Test strategy adaptation for different social media platforms."""
         # Arrange
@@ -547,7 +546,7 @@ class TestREERMiningIntegration:
         assert linkedin_strategy["industry_relevance"] == "high"
 
     async def test_cross_platform_pattern_correlation(
-        self, mock_pattern_analyzer: Mock, sample_historical_posts: List[Dict[str, Any]]
+        self, mock_pattern_analyzer: Mock, sample_historical_posts: list[dict[str, Any]]
     ):
         """Test correlation analysis across different platforms."""
         # Arrange
@@ -621,7 +620,7 @@ class TestREERMiningIntegration:
     async def test_incremental_pattern_learning(
         self,
         mock_strategy_extractor: Mock,
-        sample_historical_posts: List[Dict[str, Any]],
+        sample_historical_posts: list[dict[str, Any]],
     ):
         """Test incremental learning with new historical data."""
         # Arrange
@@ -669,7 +668,7 @@ class TestREERMiningIntegration:
     async def test_low_quality_data_filtering(
         self,
         mock_strategy_extractor: Mock,
-        sample_historical_posts: List[Dict[str, Any]],
+        sample_historical_posts: list[dict[str, Any]],
     ):
         """Test filtering and handling of low-quality historical data."""
         # Arrange
@@ -703,7 +702,7 @@ class TestREERMiningIntegration:
     async def test_pattern_confliction_resolution(
         self,
         mock_pattern_analyzer: Mock,
-        expected_extracted_patterns: List[Dict[str, Any]],
+        expected_extracted_patterns: list[dict[str, Any]],
     ):
         """Test resolution of conflicting pattern recommendations."""
         # Arrange
@@ -748,7 +747,7 @@ class TestREERMiningIntegration:
     async def test_strategy_validation_against_benchmarks(
         self,
         mock_strategy_synthesizer: Mock,
-        expected_synthesized_strategy: Dict[str, Any],
+        expected_synthesized_strategy: dict[str, Any],
     ):
         """Test strategy validation against industry benchmarks."""
         # Arrange
@@ -785,7 +784,7 @@ class TestREERMiningIntegration:
     async def test_pattern_confidence_calibration(
         self,
         mock_pattern_analyzer: Mock,
-        expected_extracted_patterns: List[Dict[str, Any]],
+        expected_extracted_patterns: list[dict[str, Any]],
     ):
         """Test calibration of pattern confidence scores."""
         # Arrange
@@ -817,13 +816,14 @@ class TestREERMiningIntegration:
             for cal, raw in zip(
                 calibration["calibrated_confidence_scores"],
                 calibration["raw_confidence_scores"],
+                strict=False,
             )
         )
 
     # Integration with MLX and DSPy Tests
 
     async def test_mlx_pattern_analysis_integration(
-        self, mock_mining_pipeline: Mock, sample_historical_posts: List[Dict[str, Any]]
+        self, mock_mining_pipeline: Mock, sample_historical_posts: list[dict[str, Any]]
     ):
         """Test integration with MLX for advanced pattern analysis."""
         # Arrange

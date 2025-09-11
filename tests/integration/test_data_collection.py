@@ -7,23 +7,23 @@ mock-first approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-import pytest
-import json
-import asyncio
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock, MagicMock, call
-from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta
+from datetime import timezone
+from typing import Any
+from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
+
+import pytest
 
 # Import statements that will fail initially (RED phase)
 # These imports represent the expected API contracts
 try:
     from data_collection.analytics_importer import XAnalyticsImporter
     from data_collection.normalizer import DataNormalizer
-    from data_collection.storage import TraceStorage
     from data_collection.pipeline import DataCollectionPipeline
     from data_collection.schemas import AnalyticsData, NormalizedTrace
+    from data_collection.storage import TraceStorage
+
     from core.exceptions import ImportError, NormalizationError, StorageError
 except ImportError:
     # Expected during RED phase - create mock classes for contract testing
@@ -82,7 +82,7 @@ class TestDataCollectionIntegration:
         return client
 
     @pytest.fixture
-    def sample_x_analytics_raw(self) -> Dict[str, Any]:
+    def sample_x_analytics_raw(self) -> dict[str, Any]:
         """Sample raw X analytics data from API."""
         return {
             "data": [
@@ -139,7 +139,7 @@ class TestDataCollectionIntegration:
         }
 
     @pytest.fixture
-    def expected_normalized_trace(self) -> Dict[str, Any]:
+    def expected_normalized_trace(self) -> dict[str, Any]:
         """Expected normalized trace data after processing."""
         return {
             "id": "trace_" + str(uuid4()),
@@ -229,8 +229,8 @@ class TestDataCollectionIntegration:
     async def test_complete_single_post_pipeline(
         self,
         mock_pipeline: Mock,
-        sample_x_analytics_raw: Dict[str, Any],
-        expected_normalized_trace: Dict[str, Any],
+        sample_x_analytics_raw: dict[str, Any],
+        expected_normalized_trace: dict[str, Any],
     ):
         """Test complete pipeline for single post: import → normalize → store."""
         # Arrange
@@ -264,8 +264,8 @@ class TestDataCollectionIntegration:
     async def test_batch_processing_workflow(
         self,
         mock_pipeline: Mock,
-        sample_x_analytics_raw: Dict[str, Any],
-        expected_normalized_trace: Dict[str, Any],
+        sample_x_analytics_raw: dict[str, Any],
+        expected_normalized_trace: dict[str, Any],
     ):
         """Test batch processing of multiple posts with concurrent execution."""
         # Arrange
@@ -295,7 +295,7 @@ class TestDataCollectionIntegration:
         assert result["failed"] == 0
 
     async def test_user_timeline_processing(
-        self, mock_pipeline: Mock, sample_x_analytics_raw: Dict[str, Any]
+        self, mock_pipeline: Mock, sample_x_analytics_raw: dict[str, Any]
     ):
         """Test processing entire user timeline with pagination."""
         # Arrange
@@ -327,7 +327,7 @@ class TestDataCollectionIntegration:
     # Data Validation and Transformation Tests
 
     async def test_analytics_data_validation_and_enrichment(
-        self, mock_analytics_importer: Mock, sample_x_analytics_raw: Dict[str, Any]
+        self, mock_analytics_importer: Mock, sample_x_analytics_raw: dict[str, Any]
     ):
         """Test analytics data validation and enrichment during import."""
         # Arrange
@@ -354,8 +354,8 @@ class TestDataCollectionIntegration:
     async def test_normalization_strategy_feature_extraction(
         self,
         mock_data_normalizer: Mock,
-        sample_x_analytics_raw: Dict[str, Any],
-        expected_normalized_trace: Dict[str, Any],
+        sample_x_analytics_raw: dict[str, Any],
+        expected_normalized_trace: dict[str, Any],
     ):
         """Test strategy feature extraction during normalization."""
         # Arrange
@@ -385,7 +385,7 @@ class TestDataCollectionIntegration:
         assert 0.0 <= normalized["score"] <= 1.0
 
     async def test_trace_storage_with_indexing(
-        self, mock_trace_storage: Mock, expected_normalized_trace: Dict[str, Any]
+        self, mock_trace_storage: Mock, expected_normalized_trace: dict[str, Any]
     ):
         """Test trace storage with proper indexing and metadata."""
         # Arrange
@@ -428,7 +428,7 @@ class TestDataCollectionIntegration:
             await mock_analytics_importer.import_tweet_analytics("1234567890")
 
     async def test_normalization_error_recovery(
-        self, mock_pipeline: Mock, sample_x_analytics_raw: Dict[str, Any]
+        self, mock_pipeline: Mock, sample_x_analytics_raw: dict[str, Any]
     ):
         """Test recovery from normalization errors with fallback processing."""
         # Arrange
@@ -451,8 +451,8 @@ class TestDataCollectionIntegration:
     async def test_storage_failure_with_retry(
         self,
         mock_pipeline: Mock,
-        sample_x_analytics_raw: Dict[str, Any],
-        expected_normalized_trace: Dict[str, Any],
+        sample_x_analytics_raw: dict[str, Any],
+        expected_normalized_trace: dict[str, Any],
     ):
         """Test storage failure handling with retry mechanism."""
         # Arrange
@@ -474,18 +474,11 @@ class TestDataCollectionIntegration:
             await mock_pipeline.process_single_post(post_id)
 
     async def test_partial_batch_failure_handling(
-        self, mock_pipeline: Mock, sample_x_analytics_raw: Dict[str, Any]
+        self, mock_pipeline: Mock, sample_x_analytics_raw: dict[str, Any]
     ):
         """Test handling of partial failures in batch processing."""
         # Arrange
         post_ids = ["1", "2", "3", "4", "5"]
-        batch_results = [
-            {"status": "success", "data": sample_x_analytics_raw},
-            {"status": "error", "error": "Post not found"},
-            {"status": "success", "data": sample_x_analytics_raw},
-            {"status": "error", "error": "Rate limited"},
-            {"status": "success", "data": sample_x_analytics_raw},
-        ]
 
         mock_pipeline.process_batch_posts.return_value = {
             "total_processed": 5,
@@ -505,7 +498,7 @@ class TestDataCollectionIntegration:
     # Performance and Monitoring Tests
 
     async def test_processing_performance_metrics(
-        self, mock_pipeline: Mock, sample_x_analytics_raw: Dict[str, Any]
+        self, mock_pipeline: Mock, sample_x_analytics_raw: dict[str, Any]
     ):
         """Test performance metrics collection during processing."""
         # Arrange
@@ -613,7 +606,7 @@ class TestDataCollectionIntegration:
         mock_analytics_importer.validate_credentials.assert_called_once()
 
     async def test_data_persistence_and_retrieval(
-        self, mock_trace_storage: Mock, expected_normalized_trace: Dict[str, Any]
+        self, mock_trace_storage: Mock, expected_normalized_trace: dict[str, Any]
     ):
         """Test data persistence and subsequent retrieval."""
         # Arrange

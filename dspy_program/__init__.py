@@ -9,39 +9,37 @@ Modules:
     evaluator: KPI evaluator for performance metrics (T024)
 """
 
-from .pipeline import (
-    REERDSPyPipeline,
-    PipelineConfig,
-    ContentRequest,
-    ContentResult,
-    PipelineResult,
-    PipelineFactory,
-    ContentGeneratorModule,
-    ContentGenerationSignature,
-    ContentRefinementSignature,
-)
-
-from .reer_module import (
-    REERSearchModule,
-    REERSearchResult,
-    SearchResult,
-    SearchContext,
-    SearchStrategy,
-    QueryEnhancementModule,
-    ContentAnalysisModule,
-    MockREERSearchEngine,
-)
-
 from .evaluator import (
-    KPIEvaluator,
-    PerformanceMetrics,
-    MetricResult,
-    MetricDefinition,
-    MetricType,
-    MetricLevel,
     BenchmarkData,
     BenchmarkManager,
     KPICalculator,
+    KPIEvaluator,
+    MetricDefinition,
+    MetricLevel,
+    MetricResult,
+    MetricType,
+    PerformanceMetrics,
+)
+from .pipeline import (
+    ContentGenerationSignature,
+    ContentGeneratorModule,
+    ContentRefinementSignature,
+    ContentRequest,
+    ContentResult,
+    PipelineConfig,
+    PipelineFactory,
+    PipelineResult,
+    REERDSPyPipeline,
+)
+from .reer_module import (
+    ContentAnalysisModule,
+    MockREERSearchEngine,
+    QueryEnhancementModule,
+    REERSearchModule,
+    REERSearchResult,
+    SearchContext,
+    SearchResult,
+    SearchStrategy,
 )
 
 __all__ = [

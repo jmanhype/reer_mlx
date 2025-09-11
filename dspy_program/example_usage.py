@@ -7,30 +7,27 @@ for end-to-end social media content generation and optimization.
 import asyncio
 import logging
 from pathlib import Path
-from typing import List
 
 try:
+    from ..core.trainer import OptimizationConfig
+    from ..plugins.dspy_lm import DSPyConfig
+    from .evaluator import KPIEvaluator
     from .pipeline import (
-        PipelineFactory,
         ContentRequest,
         PipelineConfig,
+        PipelineFactory,
         REERDSPyPipeline,
     )
     from .reer_module import REERSearchModule, SearchStrategy
-    from .evaluator import KPIEvaluator
-    from ..plugins.dspy_lm import DSPyConfig
-    from ..core.trainer import OptimizationConfig
 except ImportError:
     # Fallback for standalone usage
+    from evaluator import KPIEvaluator
     from pipeline import (
-        PipelineFactory,
         ContentRequest,
-        PipelineConfig,
-        REERDSPyPipeline,
+        PipelineFactory,
     )
     from reer_module import REERSearchModule, SearchStrategy
-    from evaluator import KPIEvaluator
-    from plugins.dspy_lm import DSPyConfig
+
     from core.trainer import OptimizationConfig
 
 
@@ -76,7 +73,7 @@ async def basic_pipeline_example():
             logger.error(f"Generation failed: {result.error_message}")
 
     except Exception as e:
-        logger.error(f"Basic pipeline example failed: {e}")
+        logger.exception(f"Basic pipeline example failed: {e}")
 
 
 async def full_pipeline_example():
@@ -140,7 +137,7 @@ async def full_pipeline_example():
             logger.info(f"Best score: {best.scores.overall_score:.3f}")
 
     except Exception as e:
-        logger.error(f"Full pipeline example failed: {e}")
+        logger.exception(f"Full pipeline example failed: {e}")
 
 
 async def reer_search_example():
@@ -193,7 +190,7 @@ async def reer_search_example():
                 logger.error(f"Search failed: {result.error_message}")
 
     except Exception as e:
-        logger.error(f"REER search example failed: {e}")
+        logger.exception(f"REER search example failed: {e}")
 
 
 async def kpi_evaluation_example():
@@ -282,7 +279,7 @@ async def kpi_evaluation_example():
         logger.info(f"Average Score: {summary.get('average_score', 0):.2f}")
 
     except Exception as e:
-        logger.error(f"KPI evaluation example failed: {e}")
+        logger.exception(f"KPI evaluation example failed: {e}")
 
 
 async def optimization_example():
@@ -322,7 +319,7 @@ async def optimization_example():
 
         if optimization_result.success:
             best_individual = optimization_result.best_individual
-            logger.info(f"Optimization completed successfully!")
+            logger.info("Optimization completed successfully!")
             logger.info(f"Best fitness: {best_individual.overall_fitness:.3f}")
             logger.info(f"Generations: {optimization_result.total_generations}")
             logger.info(
@@ -338,7 +335,7 @@ async def optimization_example():
             logger.error(f"Optimization failed: {optimization_result.error_message}")
 
     except Exception as e:
-        logger.error(f"Optimization example failed: {e}")
+        logger.exception(f"Optimization example failed: {e}")
 
 
 async def pipeline_status_example():
@@ -371,7 +368,7 @@ async def pipeline_status_example():
             logger.info(f"  Total Evaluations: {evaluator_status['total_evaluations']}")
 
     except Exception as e:
-        logger.error(f"Status example failed: {e}")
+        logger.exception(f"Status example failed: {e}")
 
 
 async def main():
@@ -395,7 +392,7 @@ async def main():
             await example_func()
             logger.info(f"✓ {name} completed successfully")
         except Exception as e:
-            logger.error(f"✗ {name} failed: {e}")
+            logger.exception(f"✗ {name} failed: {e}")
 
         # Small delay between examples
         await asyncio.sleep(1)

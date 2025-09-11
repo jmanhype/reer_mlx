@@ -4,19 +4,21 @@ Tests that the schema validation utility integrates correctly with the existing
 contract test framework and provides consistent validation behavior.
 """
 
+from datetime import datetime
+from datetime import timezone
 import json
-import pytest
 from pathlib import Path
-from uuid import uuid4
-from datetime import datetime, timezone
-import tempfile
 import subprocess
 import sys
-from typing import Dict, Any
+import tempfile
+from typing import Any
+from uuid import uuid4
+
+import pytest
 
 # Import the schema validator directly for integration testing
 sys.path.append(str(Path(__file__).parent.parent.parent / "tools"))
-from schema_check import SchemaValidator, FileValidator, AutoFixer, BatchValidator
+from schema_check import AutoFixer, BatchValidator, FileValidator, SchemaValidator
 
 
 class TestSchemaValidatorIntegration:
@@ -49,7 +51,7 @@ class TestSchemaValidatorIntegration:
         return BatchValidator(schema_validator)
 
     @pytest.fixture
-    def valid_trace_data(self) -> Dict[str, Any]:
+    def valid_trace_data(self) -> dict[str, Any]:
         """Valid trace data for testing."""
         return {
             "id": str(uuid4()),
@@ -105,10 +107,10 @@ class TestSchemaValidatorIntegration:
             assert "type" in schema
 
     def test_schema_validation_consistency(
-        self, schema_validator: SchemaValidator, valid_trace_data: Dict[str, Any]
+        self, schema_validator: SchemaValidator, valid_trace_data: dict[str, Any]
     ):
         """Test that schema validation is consistent with jsonschema library."""
-        from jsonschema import validate, ValidationError
+        from jsonschema import ValidationError, validate
 
         # Get the traces schema
         traces_schema = schema_validator.schemas["traces"]
@@ -132,7 +134,7 @@ class TestSchemaValidatorIntegration:
     def test_json_file_validation(
         self,
         file_validator: FileValidator,
-        valid_trace_data: Dict[str, Any],
+        valid_trace_data: dict[str, Any],
         temp_test_dir: Path,
     ):
         """Test validation of JSON files."""
@@ -155,7 +157,7 @@ class TestSchemaValidatorIntegration:
     def test_jsonl_file_validation(
         self,
         file_validator: FileValidator,
-        valid_trace_data: Dict[str, Any],
+        valid_trace_data: dict[str, Any],
         temp_test_dir: Path,
     ):
         """Test validation of JSONL files."""
@@ -325,7 +327,7 @@ class TestSchemaValidatorIntegration:
     def test_batch_validation_mixed_files(
         self,
         batch_validator: BatchValidator,
-        valid_trace_data: Dict[str, Any],
+        valid_trace_data: dict[str, Any],
         temp_test_dir: Path,
     ):
         """Test batch validation with mixed valid and invalid files."""
@@ -377,6 +379,7 @@ class TestSchemaValidatorIntegration:
             capture_output=True,
             text=True,
             cwd=project_root,
+            check=False,
         )
 
         assert result.returncode == 0
@@ -389,7 +392,7 @@ class TestSchemaValidatorIntegration:
         assert "v1.0.0" in output  # Version should be shown
 
     def test_cli_validate_command(
-        self, project_root: Path, valid_trace_data: Dict[str, Any], temp_test_dir: Path
+        self, project_root: Path, valid_trace_data: dict[str, Any], temp_test_dir: Path
     ):
         """Test the CLI validate command."""
         test_file = temp_test_dir / "test_trace.json"
@@ -412,6 +415,7 @@ class TestSchemaValidatorIntegration:
             capture_output=True,
             text=True,
             cwd=project_root,
+            check=False,
         )
 
         assert result.returncode == 0
@@ -469,6 +473,7 @@ class TestSchemaValidatorIntegration:
             capture_output=True,
             text=True,
             cwd=project_root,
+            check=False,
         )
 
         assert result.returncode == 0
@@ -489,7 +494,7 @@ class TestSchemaValidatorIntegration:
         assert len(fixed_data["strategy_features"]) > 0  # Array should be populated
 
     def test_cli_report_command(
-        self, project_root: Path, valid_trace_data: Dict[str, Any], temp_test_dir: Path
+        self, project_root: Path, valid_trace_data: dict[str, Any], temp_test_dir: Path
     ):
         """Test the CLI report command."""
         test_file = temp_test_dir / "test_trace.json"
@@ -515,6 +520,7 @@ class TestSchemaValidatorIntegration:
             capture_output=True,
             text=True,
             cwd=project_root,
+            check=False,
         )
 
         assert result.returncode == 0
@@ -536,7 +542,7 @@ class TestSchemaValidatorIntegration:
     # Error Handling Tests
 
     def test_invalid_schema_name_handling(
-        self, schema_validator: SchemaValidator, valid_trace_data: Dict[str, Any]
+        self, schema_validator: SchemaValidator, valid_trace_data: dict[str, Any]
     ):
         """Test handling of invalid schema names."""
         with pytest.raises(ValueError, match="Schema 'nonexistent' not found"):
@@ -567,7 +573,7 @@ class TestSchemaValidatorIntegration:
     def test_large_file_handling(
         self,
         file_validator: FileValidator,
-        valid_trace_data: Dict[str, Any],
+        valid_trace_data: dict[str, Any],
         temp_test_dir: Path,
     ):
         """Test handling of large JSONL files."""

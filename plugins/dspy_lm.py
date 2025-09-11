@@ -1,21 +1,20 @@
+from typing import Optional
 """T019: DSPy language model adapter implementation.
 
 Provides DSPy integration for cloud providers (OpenAI, Anthropic, Together)
 with structured prompting, reasoning, and optimization capabilities.
 """
 
-import asyncio
-import logging
-import os
-from typing import Dict, Any, List, Optional, Union
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from datetime import datetime
+import logging
+import os
+from typing import Any
 
 try:
     import dspy
-    from dspy import OpenAI, Anthropic, Together, ChatAdapter
-    from dspy.teleprompt import BootstrapFewShot, MIPRO
+    from dspy import Anthropic, ChatAdapter, OpenAI, Together
+    from dspy.teleprompt import MIPRO, BootstrapFewShot
 
     DSPY_AVAILABLE = True
 except ImportError:
@@ -28,9 +27,9 @@ except ImportError:
     BootstrapFewShot = None
     MIPRO = None
 
-from .mlx_lm import BaseLMAdapter
-from core.exceptions import ValidationError, ScoringError
+from core.exceptions import ScoringError, ValidationError
 
+from .mlx_lm import BaseLMAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -41,14 +40,14 @@ class DSPyConfig:
 
     provider: str  # openai, anthropic, together
     model: str
-    api_key: Optional[str] = None
-    api_base: Optional[str] = None
+    api_key: str | None = None
+    api_base: str | None = None
     max_tokens: int = 1000
     temperature: float = 0.7
     top_p: float = 0.9
     frequency_penalty: float = 0.0
     presence_penalty: float = 0.0
-    stop: Optional[List[str]] = None
+    stop: list[str] | None = None
     timeout: int = 30
     max_retries: int = 3
 
@@ -64,8 +63,8 @@ class PromptTemplate:
 
     system_prompt: str
     user_template: str
-    variables: List[str] = field(default_factory=list)
-    examples: List[Dict[str, str]] = field(default_factory=list)
+    variables: list[str] = field(default_factory=list)
+    examples: list[dict[str, str]] = field(default_factory=list)
 
 
 class DSPyPromptModule(dspy.Module if DSPY_AVAILABLE else object):
@@ -109,7 +108,7 @@ class DSPyLanguageModelAdapter(BaseLMAdapter):
         self._initialized = False
 
         # Prompt templates
-        self.templates: Dict[str, PromptTemplate] = {}
+        self.templates: dict[str, PromptTemplate] = {}
 
         logger.info(f"Initializing DSPy adapter for {config.provider}:{config.model}")
 
@@ -176,18 +175,18 @@ class DSPyLanguageModelAdapter(BaseLMAdapter):
             logger.info(f"DSPy adapter initialized for {self.config.provider}")
 
         except Exception as e:
-            logger.error(f"Failed to initialize DSPy adapter: {e}")
+            logger.exception(f"Failed to initialize DSPy adapter: {e}")
             raise ValidationError(f"DSPy initialization failed: {e}")
 
-    def _get_api_key(self) -> Optional[str]:
+    def _get_api_key(self) -> str | None:
         """Get API key from environment variables."""
         provider = self.config.provider.lower()
 
         if provider == "openai":
             return os.getenv("OPENAI_API_KEY")
-        elif provider == "anthropic":
+        if provider == "anthropic":
             return os.getenv("ANTHROPIC_API_KEY")
-        elif provider == "together":
+        if provider == "together":
             return os.getenv("TOGETHER_API_KEY")
 
         return None
@@ -195,8 +194,8 @@ class DSPyLanguageModelAdapter(BaseLMAdapter):
     async def generate(
         self,
         prompt: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs,
     ) -> str:
         """Generate text using DSPy model.
@@ -247,14 +246,14 @@ class DSPyLanguageModelAdapter(BaseLMAdapter):
             return result.output
 
         except Exception as e:
-            logger.error(f"DSPy generation failed: {e}")
+            logger.exception(f"DSPy generation failed: {e}")
             raise ScoringError(f"Generation failed: {e}")
 
     async def generate_stream(
         self,
         prompt: str,
-        max_tokens: Optional[int] = None,
-        temperature: Optional[float] = None,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
         **kwargs,
     ) -> AsyncIterator[str]:
         """Generate streaming text using DSPy model.
@@ -316,16 +315,14 @@ class DSPyLanguageModelAdapter(BaseLMAdapter):
 
                 # Convert to perplexity-like score (lower is better)
                 # Scale from 1-10 to approximate perplexity range
-                perplexity = max(1.0, 100.0 / max(1.0, avg_score))
-
-                return perplexity
+                return max(1.0, 100.0 / max(1.0, avg_score))
 
             except (ValueError, AttributeError):
                 # Fallback if parsing fails
                 return 50.0  # Neutral perplexity
 
         except Exception as e:
-            logger.error(f"Perplexity calculation failed: {e}")
+            logger.exception(f"Perplexity calculation failed: {e}")
             return float("inf")
 
     async def _create_temp_lm(self, config: DSPyConfig) -> None:
@@ -407,11 +404,11 @@ class DSPyLanguageModelAdapter(BaseLMAdapter):
             return result.output
 
         except Exception as e:
-            logger.error(f"Template generation failed: {e}")
+            logger.exception(f"Template generation failed: {e}")
             raise ScoringError(f"Template generation failed: {e}")
 
     async def optimize_with_examples(
-        self, examples: List[Dict[str, str]], metric_fn: Optional[callable] = None
+        self, examples: list[dict[str, str]], metric_fn: Optional[callable] = None
     ) -> None:
         """Optimize the model using few-shot examples.
 
@@ -430,7 +427,7 @@ class DSPyLanguageModelAdapter(BaseLMAdapter):
                 )
 
             # Use BootstrapFewShot for optimization
-            optimizer = BootstrapFewShot(
+            BootstrapFewShot(
                 metric=metric_fn,
                 max_bootstrapped_demos=len(examples),
                 max_labeled_demos=min(8, len(examples)),
@@ -443,14 +440,14 @@ class DSPyLanguageModelAdapter(BaseLMAdapter):
             logger.info(f"Stored {len(examples)} examples for optimization")
 
         except Exception as e:
-            logger.error(f"Optimization failed: {e}")
+            logger.exception(f"Optimization failed: {e}")
             raise ScoringError(f"Optimization failed: {e}")
 
     def is_available(self) -> bool:
         """Check if DSPy adapter is available."""
         return DSPY_AVAILABLE and dspy is not None
 
-    async def get_model_info(self) -> Dict[str, Any]:
+    async def get_model_info(self) -> dict[str, Any]:
         """Get information about the DSPy model.
 
         Returns:
@@ -474,7 +471,7 @@ class DSPyModelFactory:
 
     @staticmethod
     def create_openai_adapter(
-        model: str = "gpt-3.5-turbo", api_key: Optional[str] = None, **kwargs
+        model: str = "gpt-3.5-turbo", api_key: str | None = None, **kwargs
     ) -> DSPyLanguageModelAdapter:
         """Create OpenAI DSPy adapter.
 
@@ -491,7 +488,7 @@ class DSPyModelFactory:
 
     @staticmethod
     def create_anthropic_adapter(
-        model: str = "claude-3-sonnet-20240229", api_key: Optional[str] = None, **kwargs
+        model: str = "claude-3-sonnet-20240229", api_key: str | None = None, **kwargs
     ) -> DSPyLanguageModelAdapter:
         """Create Anthropic DSPy adapter.
 
@@ -511,7 +508,7 @@ class DSPyModelFactory:
     @staticmethod
     def create_together_adapter(
         model: str = "meta-llama/Llama-3-8b-chat-hf",
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         **kwargs,
     ) -> DSPyLanguageModelAdapter:
         """Create Together AI DSPy adapter.
@@ -549,7 +546,7 @@ SOCIAL_MEDIA_TEMPLATES = {
 
 
 def create_social_media_adapter(
-    provider: str = "openai", model: Optional[str] = None, **kwargs
+    provider: str = "openai", model: str | None = None, **kwargs
 ) -> DSPyLanguageModelAdapter:
     """Create a DSPy adapter optimized for social media content.
 

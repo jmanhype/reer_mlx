@@ -5,15 +5,15 @@ __author__ = "REER Team"
 __description__ = "Core functionality for social posting with DSPy and MLX"
 
 # Core modules
+from .candidate_scorer import ContentCandidate, REERCandidateScorer, ScoringMetrics
 from .exceptions import *
 from .trace_store import REERTraceStore, TraceRecord
+from .trainer import Individual, OptimizationResult, Population, REERGEPATrainer
 from .trajectory_synthesizer import (
     REERTrajectorySynthesizer,
-    StrategySynthesis,
     StrategyPattern,
+    StrategySynthesis,
 )
-from .candidate_scorer import REERCandidateScorer, ContentCandidate, ScoringMetrics
-from .trainer import REERGEPATrainer, OptimizationResult, Individual, Population
 
 __all__ = [
     # Exceptions

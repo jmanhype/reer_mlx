@@ -4,7 +4,7 @@ Custom exceptions for domain-specific error handling with type safety
 and detailed error context for debugging and monitoring.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class REERBaseException(Exception):
@@ -13,8 +13,8 @@ class REERBaseException(Exception):
     def __init__(
         self,
         message: str,
-        details: Optional[Dict[str, Any]] = None,
-        original_error: Optional[Exception] = None,
+        details: dict[str, Any] | None = None,
+        original_error: Exception | None = None,
     ):
         super().__init__(message)
         self.message = message

@@ -7,15 +7,17 @@ with mock-first approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
+from datetime import datetime
+from datetime import timezone
 import json
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timezone
-from uuid import uuid4, UUID
-from typing import Dict, Any, List
-from jsonschema import validate, ValidationError, Draft7Validator
+from typing import Any
+from unittest.mock import Mock, patch
+from uuid import uuid4
+
+from jsonschema import Draft7Validator, ValidationError, validate
 from jsonschema.exceptions import SchemaError
+import pytest
 
 
 class TestTraceSchemaContract:
@@ -37,7 +39,7 @@ class TestTraceSchemaContract:
         )
 
     @pytest.fixture
-    def trace_schema(self, schema_path: Path) -> Dict[str, Any]:
+    def trace_schema(self, schema_path: Path) -> dict[str, Any]:
         """Load the traces JSON schema."""
         with open(schema_path) as f:
             return json.load(f)
@@ -52,7 +54,7 @@ class TestTraceSchemaContract:
         return validator
 
     @pytest.fixture
-    def valid_trace_data(self) -> Dict[str, Any]:
+    def valid_trace_data(self) -> dict[str, Any]:
         """Valid trace data that should pass schema validation."""
         return {
             "id": str(uuid4()),
@@ -82,7 +84,7 @@ class TestTraceSchemaContract:
 
     # Schema Structure and Metadata Tests
 
-    def test_schema_has_required_metadata(self, trace_schema: Dict[str, Any]):
+    def test_schema_has_required_metadata(self, trace_schema: dict[str, Any]):
         """Test that schema contains required JSON Schema Draft 7 metadata."""
         assert trace_schema["$schema"] == "http://json-schema.org/draft-07/schema#"
         assert trace_schema["$id"] == "https://reer-dspy-mlx/schemas/traces.schema.json"
@@ -92,17 +94,17 @@ class TestTraceSchemaContract:
         assert "description" in trace_schema
 
     def test_schema_validation_contract(
-        self, trace_schema: Dict[str, Any], mock_validator: Mock
+        self, trace_schema: dict[str, Any], mock_validator: Mock
     ):
         """Test schema validation behavior contract."""
         # This will fail initially - testing the contract, not implementation
         with patch("jsonschema.Draft7Validator", return_value=mock_validator):
-            validator = Draft7Validator(trace_schema)
+            Draft7Validator(trace_schema)
 
             # Verify validator was created with our schema
             mock_validator.check_schema.assert_called_once()
 
-    def test_schema_is_valid_json_schema(self, trace_schema: Dict[str, Any]):
+    def test_schema_is_valid_json_schema(self, trace_schema: dict[str, Any]):
         """Test that the schema itself is a valid JSON Schema Draft 7."""
         # This will fail if schema has structural issues
         try:
@@ -112,7 +114,7 @@ class TestTraceSchemaContract:
 
     # Required Fields Validation Tests
 
-    def test_all_required_fields_present(self, trace_schema: Dict[str, Any]):
+    def test_all_required_fields_present(self, trace_schema: dict[str, Any]):
         """Test that all required fields are defined in schema."""
         required_fields = {
             "id",
@@ -129,7 +131,7 @@ class TestTraceSchemaContract:
         assert schema_required == required_fields
 
     def test_missing_required_field_validation_fails(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that missing any required field causes validation failure."""
         required_fields = trace_schema["required"]
@@ -145,7 +147,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_seed_params_required_fields(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that seed_params has all required nested fields."""
         seed_params_schema = trace_schema["properties"]["seed_params"]
@@ -162,7 +164,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_metrics_required_fields(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that metrics has all required nested fields."""
         metrics_schema = trace_schema["properties"]["metrics"]
@@ -184,7 +186,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_metadata_required_fields(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that metadata has all required nested fields."""
         metadata_schema = trace_schema["properties"]["metadata"]
@@ -203,7 +205,7 @@ class TestTraceSchemaContract:
     # Type Checking Tests
 
     def test_id_must_be_uuid_format(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that id field must be valid UUID format."""
         id_schema = trace_schema["properties"]["id"]
@@ -221,7 +223,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_timestamp_must_be_datetime_format(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that timestamp field must be valid ISO 8601 datetime."""
         timestamp_schema = trace_schema["properties"]["timestamp"]
@@ -244,7 +246,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_score_must_be_number_in_range(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that score must be number between 0.0 and 1.0."""
         score_schema = trace_schema["properties"]["score"]
@@ -263,7 +265,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_seed_params_length_constraints(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that seed_params.length has proper integer constraints."""
         length_schema = trace_schema["properties"]["seed_params"]["properties"][
@@ -284,7 +286,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_seed_params_thread_size_constraints(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that seed_params.thread_size has proper integer constraints."""
         thread_size_schema = trace_schema["properties"]["seed_params"]["properties"][
@@ -305,7 +307,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_metrics_non_negative_integers(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that impression metrics must be non-negative integers."""
         for field in ["impressions", "retweets", "likes"]:
@@ -321,7 +323,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_engagement_rate_percentage_range(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that engagement_rate must be number between 0.0 and 100.0."""
         engagement_schema = trace_schema["properties"]["metrics"]["properties"][
@@ -342,7 +344,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_strategy_features_array_validation(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that strategy_features is array of strings with minimum items."""
         features_schema = trace_schema["properties"]["strategy_features"]
@@ -361,7 +363,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_provider_pattern_validation(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that provider follows the required pattern."""
         provider_schema = trace_schema["properties"]["provider"]
@@ -386,7 +388,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_metadata_confidence_range(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that metadata.confidence is number between 0.0 and 1.0."""
         confidence_schema = trace_schema["properties"]["metadata"]["properties"][
@@ -409,7 +411,7 @@ class TestTraceSchemaContract:
     # Edge Cases and Invalid Data Tests
 
     def test_additional_properties_not_allowed(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that additional properties are not allowed."""
         assert trace_schema["additionalProperties"] is False
@@ -424,7 +426,7 @@ class TestTraceSchemaContract:
             validate(invalid_data, trace_schema)
 
     def test_null_values_rejected(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that null values are rejected for required fields."""
         required_fields = trace_schema["required"]
@@ -437,7 +439,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_empty_strings_validation(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test behavior with empty strings for string fields."""
         string_fields = ["source_post_id"]
@@ -451,7 +453,7 @@ class TestTraceSchemaContract:
                 validate(invalid_data, trace_schema)
 
     def test_boundary_values_validation(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test boundary values for numeric constraints."""
         # Test boundary values that should be valid
@@ -486,7 +488,7 @@ class TestTraceSchemaContract:
 
     # Schema Version Compatibility Tests
 
-    def test_schema_version_compatibility(self, trace_schema: Dict[str, Any]):
+    def test_schema_version_compatibility(self, trace_schema: dict[str, Any]):
         """Test schema version is properly defined for compatibility tracking."""
         assert "version" in trace_schema
         assert trace_schema["version"] == "1.0.0"
@@ -497,7 +499,7 @@ class TestTraceSchemaContract:
 
         assert re.match(version_pattern, trace_schema["version"])
 
-    def test_schema_id_uniqueness(self, trace_schema: Dict[str, Any]):
+    def test_schema_id_uniqueness(self, trace_schema: dict[str, Any]):
         """Test that schema has unique identifier for version tracking."""
         assert "$id" in trace_schema
         schema_id = trace_schema["$id"]
@@ -510,8 +512,8 @@ class TestTraceSchemaContract:
     def test_validation_interaction_contract(
         self,
         mock_validate: Mock,
-        trace_schema: Dict[str, Any],
-        valid_trace_data: Dict[str, Any],
+        trace_schema: dict[str, Any],
+        valid_trace_data: dict[str, Any],
     ):
         """Test the interaction contract with jsonschema validation."""
         # This tests HOW validation is called, not WHAT it validates
@@ -523,7 +525,7 @@ class TestTraceSchemaContract:
         # Verify the interaction occurred with correct parameters
         mock_validate.assert_called_once_with(valid_trace_data, trace_schema)
 
-    def test_error_handling_contract(self, trace_schema: Dict[str, Any]):
+    def test_error_handling_contract(self, trace_schema: dict[str, Any]):
         """Test that validation errors are properly raised and structured."""
         invalid_data = {"invalid": "data"}
 
@@ -538,7 +540,7 @@ class TestTraceSchemaContract:
             assert hasattr(e, "schema_path")
 
     def test_valid_data_contract_success(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test that valid data passes validation contract."""
         # This will fail initially since we're testing the contract
@@ -555,7 +557,7 @@ class TestTraceSchemaContract:
     # Performance and Edge Case Tests
 
     def test_large_strategy_features_array(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test validation with large strategy_features array."""
         test_data = valid_trace_data.copy()
@@ -568,7 +570,7 @@ class TestTraceSchemaContract:
             pytest.fail(f"Large strategy_features array should be valid: {e}")
 
     def test_unicode_string_handling(
-        self, trace_schema: Dict[str, Any], valid_trace_data: Dict[str, Any]
+        self, trace_schema: dict[str, Any], valid_trace_data: dict[str, Any]
     ):
         """Test validation with Unicode strings."""
         test_data = valid_trace_data.copy()

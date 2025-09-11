@@ -2,16 +2,16 @@
 
 from .collectors import XAnalyticsNormalizer
 from .dspy_modules import (
-    SocialContentIdeator,
-    SocialContentComposer,
-    SocialContentOptimizer,
-    SocialTrendAnalyzer,
-    SocialContentPipeline,
     ContentBrief,
     ContentType,
     Platform,
+    SocialContentComposer,
+    SocialContentIdeator,
+    SocialContentOptimizer,
+    SocialContentPipeline,
+    SocialTrendAnalyzer,
 )
-from .kpis import SocialKPICalculator, PostMetrics, KPIResult, KPIDashboard, KPICategory
+from .kpis import KPICategory, KPIDashboard, KPIResult, PostMetrics, SocialKPICalculator
 
 __all__ = [
     # Analytics and data normalization

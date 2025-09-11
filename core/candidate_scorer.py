@@ -5,19 +5,17 @@ perplexity calculation, engagement prediction, and multi-dimensional
 quality assessment. Integrates with MLX models for efficient evaluation.
 """
 
-import asyncio
-import math
-import numpy as np
-from typing import Dict, Any, List, Optional, Tuple, Union
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+import math
 import re
-from pathlib import Path
+from typing import Any
+
+import numpy as np
 
 try:
+    from mlx import nn
     import mlx.core as mx
-    import mlx.nn as nn
-    from mlx_lm import load, generate
+    from mlx_lm import generate, load
 
     MLX_AVAILABLE = True
 except ImportError:
@@ -25,7 +23,7 @@ except ImportError:
     mx = None
     nn = None
 
-from .exceptions import ScoringError, PerplexityError, ValidationError
+from .exceptions import PerplexityError, ScoringError, ValidationError
 
 
 @dataclass
@@ -42,7 +40,7 @@ class ScoringMetrics:
     brand_alignment: float
     overall_score: float
     confidence: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -51,9 +49,9 @@ class ContentCandidate:
 
     candidate_id: str
     text: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    context: Optional[Dict[str, Any]] = None
-    target_metrics: Optional[Dict[str, float]] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] | None = None
+    target_metrics: dict[str, float] | None = None
 
 
 @dataclass
@@ -154,7 +152,7 @@ class PerplexityCalculator:
                 original_error=e,
             )
 
-    async def calculate_batch_perplexity(self, texts: List[str]) -> List[float]:
+    async def calculate_batch_perplexity(self, texts: list[str]) -> list[float]:
         """Calculate perplexity for multiple texts.
 
         Args:
@@ -201,7 +199,7 @@ class EngagementPredictor:
             for key in self.feature_weights:
                 self.feature_weights[key] /= total_weight
 
-    def extract_engagement_features(self, text: str) -> Dict[str, float]:
+    def extract_engagement_features(self, text: str) -> dict[str, float]:
         """Extract features that correlate with engagement."""
         features = {}
 
@@ -321,8 +319,8 @@ class QualityAssessor:
     """Assesses content quality across multiple dimensions."""
 
     def assess_quality(
-        self, text: str, context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, float]:
+        self, text: str, context: dict[str, Any] | None = None
+    ) -> dict[str, float]:
         """Assess quality across multiple dimensions.
 
         Args:
@@ -425,7 +423,7 @@ class QualityAssessor:
 
         return min(max(coherence_score, 0.0), 1.0)
 
-    def _assess_relevance(self, text: str, context: Dict[str, Any]) -> float:
+    def _assess_relevance(self, text: str, context: dict[str, Any]) -> float:
         """Assess relevance to provided context."""
         if not context:
             return 0.7
@@ -455,7 +453,7 @@ class QualityAssessor:
         return relevance
 
     def _assess_brand_alignment(
-        self, text: str, context: Optional[Dict[str, Any]]
+        self, text: str, context: dict[str, Any] | None
     ) -> float:
         """Assess brand alignment."""
         # Default brand alignment based on professionalism
@@ -546,7 +544,7 @@ class REERCandidateScorer:
     and quality assessment.
     """
 
-    def __init__(self, config: Optional[ScoringConfig] = None):
+    def __init__(self, config: ScoringConfig | None = None):
         """Initialize candidate scorer.
 
         Args:
@@ -696,8 +694,8 @@ class REERCandidateScorer:
             )
 
     async def score_candidates(
-        self, candidates: List[ContentCandidate], sort_by_score: bool = True
-    ) -> List[Tuple[ContentCandidate, ScoringMetrics]]:
+        self, candidates: list[ContentCandidate], sort_by_score: bool = True
+    ) -> list[tuple[ContentCandidate, ScoringMetrics]]:
         """Score multiple content candidates.
 
         Args:
@@ -717,11 +715,8 @@ class REERCandidateScorer:
             try:
                 metrics = await self.score_candidate(candidate)
                 results.append((candidate, metrics))
-            except ScoringError as e:
+            except ScoringError:
                 # Log error but continue with other candidates
-                print(
-                    f"Warning: Failed to score candidate {candidate.candidate_id}: {e}"
-                )
                 continue
 
         # Sort by overall score if requested
@@ -736,18 +731,17 @@ class REERCandidateScorer:
         # We'll use a logarithmic normalization
         if perplexity <= 1.0:
             return 1.0
-        elif perplexity >= 1000.0:
+        if perplexity >= 1000.0:
             return 0.0
-        else:
-            # Log scale normalization
-            log_perplexity = math.log(perplexity)
-            log_max = math.log(1000.0)
-            normalized = 1.0 - (log_perplexity / log_max)
-            return max(min(normalized, 1.0), 0.0)
+        # Log scale normalization
+        log_perplexity = math.log(perplexity)
+        log_max = math.log(1000.0)
+        normalized = 1.0 - (log_perplexity / log_max)
+        return max(min(normalized, 1.0), 0.0)
 
     async def compare_candidates(
-        self, candidates: List[ContentCandidate], comparison_criteria: List[str] = None
-    ) -> Dict[str, Any]:
+        self, candidates: list[ContentCandidate], comparison_criteria: list[str] = None
+    ) -> dict[str, Any]:
         """Compare candidates across multiple criteria.
 
         Args:

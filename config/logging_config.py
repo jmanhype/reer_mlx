@@ -8,14 +8,14 @@ Provides centralized logging configuration with:
 - File rotation and management
 """
 
+from dataclasses import dataclass, field
+from datetime import datetime
+from datetime import timezone
+import json
 import logging
 import logging.config
-import sys
-import json
 from pathlib import Path
-from typing import Dict, Any, Optional, List
-from datetime import datetime, timezone
-from dataclasses import dataclass, field
+from typing import Any
 
 # Ensure config directory exists
 config_dir = Path(__file__).parent
@@ -28,7 +28,7 @@ class LoggingConfig:
 
     # Logging levels
     root_level: str = "INFO"
-    module_levels: Dict[str, str] = field(default_factory=dict)
+    module_levels: dict[str, str] = field(default_factory=dict)
 
     # Output configuration
     console_enabled: bool = True
@@ -50,7 +50,7 @@ class LoggingConfig:
     trace_correlation: bool = True
 
     # Component-specific settings
-    component_configs: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    component_configs: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 class PerformanceFilter(logging.Filter):
@@ -78,9 +78,7 @@ class JSONFormatter(logging.Formatter):
     def format(self, record):
         # Base log entry
         log_entry = {
-            "timestamp": datetime.fromtimestamp(
-                record.created, tz=timezone.utc
-            ).isoformat(),
+            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -158,7 +156,7 @@ class TextFormatter(logging.Formatter):
         return super().format(record)
 
 
-def create_logging_config(config: LoggingConfig) -> Dict[str, Any]:
+def create_logging_config(config: LoggingConfig) -> dict[str, Any]:
     """Create logging configuration dictionary."""
 
     # Ensure log directory exists
@@ -264,15 +262,14 @@ def _parse_size(size_str: str) -> int:
 
     if size_str.endswith("KB"):
         return int(size_str[:-2]) * 1024
-    elif size_str.endswith("MB"):
+    if size_str.endswith("MB"):
         return int(size_str[:-2]) * 1024 * 1024
-    elif size_str.endswith("GB"):
+    if size_str.endswith("GB"):
         return int(size_str[:-2]) * 1024 * 1024 * 1024
-    else:
-        return int(size_str)
+    return int(size_str)
 
 
-def setup_logging(config: Optional[LoggingConfig] = None) -> None:
+def setup_logging(config: LoggingConfig | None = None) -> None:
     """Setup global logging configuration.
 
     Args:
@@ -302,7 +299,7 @@ def setup_logging(config: Optional[LoggingConfig] = None) -> None:
 
 
 def get_component_logger(
-    component_name: str, level: Optional[str] = None, trace_id: Optional[str] = None
+    component_name: str, level: str | None = None, trace_id: str | None = None
 ) -> logging.Logger:
     """Get a logger for a specific component.
 
@@ -439,7 +436,7 @@ def setup_testing_logging() -> None:
 # ============================================================================
 
 
-def log_performance(operation_name: str, logger: Optional[logging.Logger] = None):
+def log_performance(operation_name: str, logger: logging.Logger | None = None):
     """Decorator for performance logging.
 
     Args:
@@ -463,7 +460,7 @@ def log_performance(operation_name: str, logger: Optional[logging.Logger] = None
 
 
 async def async_log_performance(
-    operation_name: str, logger: Optional[logging.Logger] = None
+    operation_name: str, logger: logging.Logger | None = None
 ):
     """Async context manager for performance logging."""
     if logger is None:

@@ -16,25 +16,26 @@ Usage:
     python tools/schema_check.py report --directory data/ --output validation_report.json
 """
 
-import json
-import jsonlines
 import argparse
-import sys
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Union, Tuple, Iterator
-from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
-from uuid import uuid4, UUID
-import re
 from collections import defaultdict
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from datetime import timezone
+import json
 import logging
+from pathlib import Path
+import re
+import sys
+from typing import Any
+from uuid import UUID, uuid4
+
+import jsonlines
 
 # Third-party imports for schema validation
 try:
-    from jsonschema import validate, ValidationError, Draft7Validator, FormatChecker
-    from jsonschema.exceptions import SchemaError, RefResolutionError
+    from jsonschema import Draft7Validator, FormatChecker, ValidationError, validate
+    from jsonschema.exceptions import RefResolutionError, SchemaError
 except ImportError:
-    print("ERROR: jsonschema package required. Install with: pip install jsonschema")
     sys.exit(1)
 
 
@@ -45,11 +46,11 @@ class ValidationResult:
     file_path: str
     schema_name: str
     is_valid: bool
-    errors: List[Dict[str, Any]]
-    warnings: List[Dict[str, Any]]
-    line_number: Optional[int] = None
-    record_index: Optional[int] = None
-    validation_time: Optional[float] = None
+    errors: list[dict[str, Any]]
+    warnings: list[dict[str, Any]]
+    line_number: int | None = None
+    record_index: int | None = None
+    validation_time: float | None = None
 
 
 @dataclass
@@ -62,16 +63,16 @@ class ValidationReport:
     valid_files: int
     invalid_files: int
     files_with_warnings: int
-    schema_coverage: Dict[str, int]
-    error_summary: Dict[str, int]
-    results: List[ValidationResult]
-    auto_fixes_applied: List[Dict[str, Any]]
+    schema_coverage: dict[str, int]
+    error_summary: dict[str, int]
+    results: list[ValidationResult]
+    auto_fixes_applied: list[dict[str, Any]]
 
 
 class SchemaValidator:
     """Core JSON schema validation engine."""
 
-    def __init__(self, schema_dir: Optional[Path] = None):
+    def __init__(self, schema_dir: Path | None = None):
         """Initialize validator with schema directory."""
         self.schema_dir = schema_dir or self._find_schema_dir()
         self.schemas = {}
@@ -128,7 +129,7 @@ class SchemaValidator:
 
         for schema_file in schema_files:
             try:
-                with open(schema_file, "r", encoding="utf-8") as f:
+                with open(schema_file, encoding="utf-8") as f:
                     schema = json.load(f)
 
                 # Extract schema name from filename (e.g., "traces.schema.json" -> "traces")
@@ -146,10 +147,10 @@ class SchemaValidator:
                 self.logger.info(f"Loaded schema: {schema_name}")
 
             except (json.JSONDecodeError, SchemaError) as e:
-                self.logger.error(f"Error loading schema {schema_file}: {e}")
+                self.logger.exception(f"Error loading schema {schema_file}: {e}")
                 raise
 
-    def get_available_schemas(self) -> List[str]:
+    def get_available_schemas(self) -> list[str]:
         """Get list of available schema names."""
         return list(self.schemas.keys())
 
@@ -158,8 +159,8 @@ class SchemaValidator:
         data: Any,
         schema_name: str,
         file_path: str = "",
-        line_number: Optional[int] = None,
-        record_index: Optional[int] = None,
+        line_number: int | None = None,
+        record_index: int | None = None,
     ) -> ValidationResult:
         """Validate a single data object against a schema."""
         if schema_name not in self.validators:
@@ -237,7 +238,7 @@ class SchemaValidator:
         return error.validator in warning_validators
 
     def _check_for_warnings(
-        self, data: Dict[str, Any], schema_name: str, warnings: List[Dict[str, Any]]
+        self, data: dict[str, Any], schema_name: str, warnings: list[dict[str, Any]]
     ) -> None:
         """Check for potential warnings that aren't schema violations."""
         if not isinstance(data, dict):
@@ -252,7 +253,7 @@ class SchemaValidator:
             self._check_timeline_warnings(data, warnings)
 
     def _check_trace_warnings(
-        self, data: Dict[str, Any], warnings: List[Dict[str, Any]]
+        self, data: dict[str, Any], warnings: list[dict[str, Any]]
     ) -> None:
         """Check for warnings specific to trace data."""
         # Warn about low confidence scores
@@ -280,7 +281,7 @@ class SchemaValidator:
                 )
 
     def _check_candidate_warnings(
-        self, data: Dict[str, Any], warnings: List[Dict[str, Any]]
+        self, data: dict[str, Any], warnings: list[dict[str, Any]]
     ) -> None:
         """Check for warnings specific to candidate data."""
         # Warn about very long content
@@ -304,7 +305,7 @@ class SchemaValidator:
             )
 
     def _check_timeline_warnings(
-        self, data: Dict[str, Any], warnings: List[Dict[str, Any]]
+        self, data: dict[str, Any], warnings: list[dict[str, Any]]
     ) -> None:
         """Check for warnings specific to timeline data."""
         # Warn about scheduling in the past
@@ -334,7 +335,7 @@ class FileValidator:
 
     def validate_file(
         self, file_path: Path, schema_name: str
-    ) -> List[ValidationResult]:
+    ) -> list[ValidationResult]:
         """Validate a single JSON or JSONL file."""
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
@@ -343,17 +344,16 @@ class FileValidator:
 
         if file_path.suffix == ".jsonl":
             return self._validate_jsonl_file(file_path, schema_name)
-        elif file_path.suffix == ".json":
+        if file_path.suffix == ".json":
             return self._validate_json_file(file_path, schema_name)
-        else:
-            raise ValueError(f"Unsupported file type: {file_path.suffix}")
+        raise ValueError(f"Unsupported file type: {file_path.suffix}")
 
     def _validate_json_file(
         self, file_path: Path, schema_name: str
-    ) -> List[ValidationResult]:
+    ) -> list[ValidationResult]:
         """Validate a single JSON file."""
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
 
             result = self.schema_validator.validate_data(
@@ -386,7 +386,7 @@ class FileValidator:
 
     def _validate_jsonl_file(
         self, file_path: Path, schema_name: str
-    ) -> List[ValidationResult]:
+    ) -> list[ValidationResult]:
         """Validate a JSONL file (one JSON object per line)."""
         results = []
 
@@ -437,7 +437,7 @@ class AutoFixer:
 
     def auto_fix_data(
         self, data: Any, schema_name: str
-    ) -> Tuple[Any, List[Dict[str, Any]]]:
+    ) -> tuple[Any, list[dict[str, Any]]]:
         """Attempt to automatically fix common schema violations."""
         if schema_name not in self.schema_validator.schemas:
             raise ValueError(f"Schema '{schema_name}' not found")
@@ -465,13 +465,12 @@ class AutoFixer:
         """Deep copy an object."""
         if isinstance(obj, dict):
             return {k: self._deep_copy(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
+        if isinstance(obj, list):
             return [self._deep_copy(item) for item in obj]
-        else:
-            return obj
+        return obj
 
     def _fix_type_errors(
-        self, data: Any, schema_name: str, fixes: List[Dict[str, Any]]
+        self, data: Any, schema_name: str, fixes: list[dict[str, Any]]
     ) -> Any:
         """Fix common type conversion errors."""
         if not isinstance(data, dict):
@@ -491,9 +490,9 @@ class AutoFixer:
     def _convert_field_type(
         self,
         value: Any,
-        field_schema: Dict[str, Any],
+        field_schema: dict[str, Any],
         field_name: str,
-        fixes: List[Dict[str, Any]],
+        fixes: list[dict[str, Any]],
     ) -> Any:
         """Convert a field to the correct type."""
         expected_type = field_schema.get("type")
@@ -513,7 +512,7 @@ class AutoFixer:
                 return fixed_value
 
         elif expected_type == "integer" and not isinstance(value, int):
-            if isinstance(value, (float, str)):
+            if isinstance(value, float | str):
                 try:
                     fixed_value = int(float(value))
                     fixes.append(
@@ -529,7 +528,7 @@ class AutoFixer:
                 except (ValueError, TypeError):
                     pass
 
-        elif expected_type == "number" and not isinstance(value, (int, float)):
+        elif expected_type == "number" and not isinstance(value, int | float):
             if isinstance(value, str):
                 try:
                     fixed_value = float(value)
@@ -539,7 +538,7 @@ class AutoFixer:
                             "field": field_name,
                             "original_value": value,
                             "fixed_value": fixed_value,
-                            "description": f"Converted string to number",
+                            "description": "Converted string to number",
                         }
                     )
                     return fixed_value
@@ -580,7 +579,7 @@ class AutoFixer:
         return value
 
     def _fix_format_errors(
-        self, data: Any, schema_name: str, fixes: List[Dict[str, Any]]
+        self, data: Any, schema_name: str, fixes: list[dict[str, Any]]
     ) -> Any:
         """Fix common format errors."""
         if not isinstance(data, dict):
@@ -626,7 +625,7 @@ class AutoFixer:
         return data
 
     def _fix_missing_fields(
-        self, data: Any, schema_name: str, fixes: List[Dict[str, Any]]
+        self, data: Any, schema_name: str, fixes: list[dict[str, Any]]
     ) -> Any:
         """Add missing required fields with sensible defaults."""
         if not isinstance(data, dict):
@@ -649,14 +648,14 @@ class AutoFixer:
                             "field": field,
                             "original_value": None,
                             "fixed_value": default_value,
-                            "description": f"Added missing required field with default value",
+                            "description": "Added missing required field with default value",
                         }
                     )
 
         return data
 
     def _fix_constraint_violations(
-        self, data: Any, schema_name: str, fixes: List[Dict[str, Any]]
+        self, data: Any, schema_name: str, fixes: list[dict[str, Any]]
     ) -> Any:
         """Fix constraint violations like min/max values."""
         if not isinstance(data, dict):
@@ -678,12 +677,12 @@ class AutoFixer:
     def _fix_field_constraints(
         self,
         value: Any,
-        field_schema: Dict[str, Any],
+        field_schema: dict[str, Any],
         field_name: str,
-        fixes: List[Dict[str, Any]],
+        fixes: list[dict[str, Any]],
     ) -> Any:
         """Fix constraint violations for a specific field."""
-        if isinstance(value, (int, float)):
+        if isinstance(value, int | float):
             # Fix minimum/maximum constraints
             minimum = field_schema.get("minimum")
             maximum = field_schema.get("maximum")
@@ -788,7 +787,7 @@ class AutoFixer:
         return value
 
     def _generate_default_value(
-        self, field_name: str, field_schema: Dict[str, Any]
+        self, field_name: str, field_schema: dict[str, Any]
     ) -> Any:
         """Generate a sensible default value for a field."""
         field_type = field_schema.get("type", "string")
@@ -796,29 +795,28 @@ class AutoFixer:
         if field_type == "string":
             if field_schema.get("format") == "uuid":
                 return str(uuid4())
-            elif field_schema.get("format") == "date-time":
+            if field_schema.get("format") == "date-time":
                 return datetime.now(timezone.utc).isoformat()
-            elif field_name in ["provider"]:
+            if field_name in ["provider"]:
                 return "mlx::default-model"
-            elif field_name in ["source_post_id"]:
+            if field_name in ["source_post_id"]:
                 return f"auto_generated_{uuid4().hex[:8]}"
-            else:
-                return f"default_{field_name}"
+            return f"default_{field_name}"
 
-        elif field_type == "number":
+        if field_type == "number":
             minimum = field_schema.get("minimum", 0.0)
             maximum = field_schema.get("maximum", 1.0)
             return (minimum + maximum) / 2
 
-        elif field_type == "integer":
+        if field_type == "integer":
             minimum = field_schema.get("minimum", 0)
             maximum = field_schema.get("maximum", 100)
             return (minimum + maximum) // 2
 
-        elif field_type == "boolean":
+        if field_type == "boolean":
             return False
 
-        elif field_type == "array":
+        if field_type == "array":
             min_items = field_schema.get("minItems", 1)
             item_schema = field_schema.get("items", {})
             return [
@@ -826,7 +824,7 @@ class AutoFixer:
                 for _ in range(min_items)
             ]
 
-        elif field_type == "object":
+        if field_type == "object":
             obj = {}
             required_fields = field_schema.get("required", [])
             properties = field_schema.get("properties", {})
@@ -853,7 +851,7 @@ class AutoFixer:
         """Fix common datetime format issues."""
         # Common patterns to fix
         patterns = [
-            # Add Z suffix for UTC if missing
+            # Add Z suffix for timezone.utc if missing
             (r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})$", r"\1Z"),
             # Replace space with T
             (r"^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$", r"\1T\2Z"),
@@ -880,7 +878,7 @@ class BatchValidator:
     def validate_directory(
         self,
         directory: Path,
-        schema_mapping: Optional[Dict[str, str]] = None,
+        schema_mapping: dict[str, str] | None = None,
         recursive: bool = True,
     ) -> ValidationReport:
         """Validate all JSON/JSONL files in a directory."""
@@ -926,7 +924,7 @@ class BatchValidator:
                         error_summary[error.get("validator", "unknown")] += 1
 
             except Exception as e:
-                self.logger.error(f"Error validating {file_path}: {e}")
+                self.logger.exception(f"Error validating {file_path}: {e}")
                 results.append(
                     ValidationResult(
                         file_path=str(file_path),
@@ -947,11 +945,11 @@ class BatchValidator:
                 )
 
         # Generate report
-        total_files = len(set(r.file_path for r in results))
+        total_files = len({r.file_path for r in results})
         total_records = len(results)
-        valid_files = len(set(r.file_path for r in results if r.is_valid))
+        valid_files = len({r.file_path for r in results if r.is_valid})
         invalid_files = total_files - valid_files
-        files_with_warnings = len(set(r.file_path for r in results if r.warnings))
+        files_with_warnings = len({r.file_path for r in results if r.warnings})
 
         report = ValidationReport(
             timestamp=datetime.now(timezone.utc).isoformat(),
@@ -973,8 +971,8 @@ class BatchValidator:
         return report
 
     def _determine_schema(
-        self, file_path: Path, schema_mapping: Optional[Dict[str, str]] = None
-    ) -> Optional[str]:
+        self, file_path: Path, schema_mapping: dict[str, str] | None = None
+    ) -> str | None:
         """Determine which schema to use for a file."""
         if schema_mapping:
             # Check explicit mapping
@@ -998,10 +996,10 @@ class BatchValidator:
 
     def fix_files(
         self,
-        files: List[Path],
+        files: list[Path],
         output_dir: Path,
-        schema_mapping: Optional[Dict[str, str]] = None,
-    ) -> List[Dict[str, Any]]:
+        schema_mapping: dict[str, str] | None = None,
+    ) -> list[dict[str, Any]]:
         """Auto-fix multiple files and save to output directory."""
         if not output_dir.exists():
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -1017,7 +1015,7 @@ class BatchValidator:
                 fix_result = self._fix_single_file(file_path, schema_name, output_dir)
                 fix_results.append(fix_result)
             except Exception as e:
-                self.logger.error(f"Error fixing {file_path}: {e}")
+                self.logger.exception(f"Error fixing {file_path}: {e}")
                 fix_results.append(
                     {
                         "file_path": str(file_path),
@@ -1032,20 +1030,19 @@ class BatchValidator:
 
     def _fix_single_file(
         self, file_path: Path, schema_name: str, output_dir: Path
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Fix a single file and save to output directory."""
         output_file = output_dir / file_path.name
 
         if file_path.suffix == ".jsonl":
             return self._fix_jsonl_file(file_path, schema_name, output_file)
-        else:
-            return self._fix_json_file(file_path, schema_name, output_file)
+        return self._fix_json_file(file_path, schema_name, output_file)
 
     def _fix_json_file(
         self, file_path: Path, schema_name: str, output_file: Path
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Fix a JSON file."""
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
 
         fixed_data, fixes_applied = self.auto_fixer.auto_fix_data(data, schema_name)
@@ -1063,7 +1060,7 @@ class BatchValidator:
 
     def _fix_jsonl_file(
         self, file_path: Path, schema_name: str, output_file: Path
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Fix a JSONL file."""
         all_fixes = []
 
@@ -1108,16 +1105,16 @@ class CLI:
 Examples:
   # Validate a single file
   python tools/schema_check.py validate --file data/traces.json --schema traces
-  
+
   # Batch validate all files in a directory
   python tools/schema_check.py batch --directory data/ --recursive
-  
+
   # Auto-fix files with schema violations
   python tools/schema_check.py fix --file data/invalid.json --schema traces --output fixed/
-  
+
   # Generate validation report
   python tools/schema_check.py report --directory data/ --output validation_report.json
-  
+
   # List available schemas
   python tools/schema_check.py list-schemas
 """,
@@ -1207,7 +1204,7 @@ Examples:
 
         return parser
 
-    def run(self, args: Optional[List[str]] = None) -> int:
+    def run(self, args: list[str] | None = None) -> int:
         """Run the CLI with the given arguments."""
         parsed_args = self.parser.parse_args(args)
 
@@ -1217,20 +1214,18 @@ Examples:
         try:
             if parsed_args.command == "validate":
                 return self._cmd_validate(parsed_args)
-            elif parsed_args.command == "batch":
+            if parsed_args.command == "batch":
                 return self._cmd_batch(parsed_args)
-            elif parsed_args.command == "fix":
+            if parsed_args.command == "fix":
                 return self._cmd_fix(parsed_args)
-            elif parsed_args.command == "report":
+            if parsed_args.command == "report":
                 return self._cmd_report(parsed_args)
-            elif parsed_args.command == "list-schemas":
+            if parsed_args.command == "list-schemas":
                 return self._cmd_list_schemas(parsed_args)
-            else:
-                self.parser.print_help()
-                return 1
+            self.parser.print_help()
+            return 1
 
-        except Exception as e:
-            print(f"ERROR: {e}", file=sys.stderr)
+        except Exception:
             if parsed_args.verbose:
                 import traceback
 
@@ -1246,29 +1241,22 @@ Examples:
 
         # Print results
         for result in results:
-            print(f"File: {result.file_path}")
-            print(f"Schema: {result.schema_name}")
-            print(f"Valid: {result.is_valid}")
 
             if result.errors:
-                print(f"Errors ({len(result.errors)}):")
                 for error in result.errors:
-                    path = (
+                    (
                         ".".join(str(p) for p in error["path"])
                         if error["path"]
                         else "root"
                     )
-                    print(f"  - {path}: {error['message']}")
 
             if result.warnings:
-                print(f"Warnings ({len(result.warnings)}):")
                 for warning in result.warnings:
-                    path = (
+                    (
                         ".".join(str(p) for p in warning["path"])
                         if warning["path"]
                         else "root"
                     )
-                    print(f"  - {path}: {warning['message']}")
 
         return 0 if all(r.is_valid for r in results) else 1
 
@@ -1286,23 +1274,14 @@ Examples:
         )
 
         # Print summary
-        print(f"Validation Report")
-        print(f"================")
-        print(f"Total files: {report.total_files}")
-        print(f"Total records: {report.total_records}")
-        print(f"Valid files: {report.valid_files}")
-        print(f"Invalid files: {report.invalid_files}")
-        print(f"Files with warnings: {report.files_with_warnings}")
 
         if report.schema_coverage:
-            print(f"\nSchema coverage:")
-            for schema, count in report.schema_coverage.items():
-                print(f"  {schema}: {count} files")
+            for _schema, _count in report.schema_coverage.items():
+                pass
 
         if report.error_summary:
-            print(f"\nError summary:")
-            for error_type, count in report.error_summary.items():
-                print(f"  {error_type}: {count}")
+            for _error_type, _count in report.error_summary.items():
+                pass
 
         return 0 if report.invalid_files == 0 else 1
 
@@ -1318,7 +1297,6 @@ Examples:
         files = []
         if args.file:
             if not args.schema:
-                print("ERROR: --schema required when using --file", file=sys.stderr)
                 return 1
             files = [args.file]
             # Create a schema mapping for the single file
@@ -1328,7 +1306,6 @@ Examples:
                 args.directory.rglob("*.jsonl")
             )
         else:
-            print("ERROR: Either --file or --directory required", file=sys.stderr)
             return 1
 
         fix_results = batch_validator.fix_files(files, args.output, schema_mapping)
@@ -1337,14 +1314,10 @@ Examples:
         total_fixes = 0
         for result in fix_results:
             if result["success"]:
-                print(f"Fixed: {result['file_path']} -> {result['output_path']}")
-                print(f"  Applied {len(result['fixes_applied'])} fixes")
                 total_fixes += len(result["fixes_applied"])
             else:
-                print(f"Failed to fix: {result['file_path']}")
-                print(f"  Error: {result.get('error', 'Unknown error')}")
+                pass
 
-        print(f"\nTotal fixes applied: {total_fixes}")
         return 0
 
     def _cmd_report(self, args) -> int:
@@ -1364,9 +1337,6 @@ Examples:
         with open(args.output, "w", encoding="utf-8") as f:
             json.dump(asdict(report), f, indent=2, ensure_ascii=False, default=str)
 
-        print(f"Validation report saved to: {args.output}")
-        print(f"Summary: {report.valid_files}/{report.total_files} files valid")
-
         return 0 if report.invalid_files == 0 else 1
 
     def _cmd_list_schemas(self, args) -> int:
@@ -1374,16 +1344,11 @@ Examples:
         validator = SchemaValidator(args.schema_dir)
         schemas = validator.get_available_schemas()
 
-        print("Available schemas:")
         for schema in sorted(schemas):
             schema_info = validator.schemas[schema]
-            title = schema_info.get("title", schema)
-            version = schema_info.get("version", "unknown")
-            description = schema_info.get("description", "No description")
-
-            print(f"  {schema} (v{version})")
-            print(f"    Title: {title}")
-            print(f"    Description: {description}")
+            schema_info.get("title", schema)
+            schema_info.get("version", "unknown")
+            schema_info.get("description", "No description")
 
         return 0
 

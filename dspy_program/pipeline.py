@@ -6,18 +6,19 @@ for comprehensive social media content pipeline.
 """
 
 import asyncio
-import logging
-import time
-from typing import Dict, Any, List, Optional, Union, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import datetime
+from datetime import timezone
 import json
+import logging
+from pathlib import Path
+import time
+from typing import Any
 
 try:
     import dspy
-    from dspy import Signature, InputField, OutputField, Module, Predict, ChainOfThought
-    from dspy.teleprompt import BootstrapFewShot, MIPRO
+    from dspy import ChainOfThought, InputField, Module, OutputField, Predict, Signature
+    from dspy.teleprompt import MIPRO, BootstrapFewShot
 
     DSPY_AVAILABLE = True
 except ImportError:
@@ -45,25 +46,25 @@ except ImportError:
     MIPRO = None
 
 try:
-    from ..core.trainer import REERGEPATrainer, OptimizationConfig, OptimizationResult
     from ..core.candidate_scorer import (
-        REERCandidateScorer,
         ContentCandidate,
+        REERCandidateScorer,
         ScoringMetrics,
     )
-    from ..core.exceptions import ValidationError, OptimizationError, ScoringError
-    from ..plugins.dspy_lm import DSPyLanguageModelAdapter, DSPyConfig
+    from ..core.exceptions import OptimizationError, ScoringError, ValidationError
+    from ..core.trainer import OptimizationConfig, OptimizationResult, REERGEPATrainer
+    from ..plugins.dspy_lm import DSPyConfig, DSPyLanguageModelAdapter
 except ImportError:
     # Fallback for standalone usage
     try:
-        from core.trainer import REERGEPATrainer, OptimizationConfig, OptimizationResult
         from core.candidate_scorer import (
-            REERCandidateScorer,
             ContentCandidate,
+            REERCandidateScorer,
             ScoringMetrics,
         )
-        from core.exceptions import ValidationError, OptimizationError, ScoringError
-        from plugins.dspy_lm import DSPyLanguageModelAdapter, DSPyConfig
+        from core.exceptions import OptimizationError, ScoringError, ValidationError
+        from core.trainer import OptimizationConfig, OptimizationResult, REERGEPATrainer
+        from plugins.dspy_lm import DSPyConfig, DSPyLanguageModelAdapter
     except ImportError:
         # Create mock classes if imports fail
         class ValidationError(Exception):
@@ -135,8 +136,8 @@ except ImportError:
 
 
 try:
-    from .reer_module import REERSearchModule, REERSearchResult
     from .evaluator import KPIEvaluator, PerformanceMetrics
+    from .reer_module import REERSearchModule, REERSearchResult
 except ImportError:
     # Will be set to None if imports fail
     REERSearchModule = None
@@ -163,7 +164,7 @@ class PipelineConfig:
 
     # Optimization settings
     use_optimization: bool = True
-    optimization_config: Optional[OptimizationConfig] = None
+    optimization_config: OptimizationConfig | None = None
 
     # Search configuration
     enable_reer_search: bool = True
@@ -171,7 +172,7 @@ class PipelineConfig:
 
     # Evaluation settings
     enable_kpi_evaluation: bool = True
-    evaluation_metrics: List[str] = field(
+    evaluation_metrics: list[str] = field(
         default_factory=lambda: [
             "engagement_rate",
             "quality_score",
@@ -182,7 +183,7 @@ class PipelineConfig:
 
     # Output settings
     save_intermediate_results: bool = True
-    output_directory: Optional[Path] = None
+    output_directory: Path | None = None
 
 
 @dataclass
@@ -194,9 +195,9 @@ class ContentRequest:
     platform: str = "twitter"  # twitter, linkedin, instagram
     audience: str = "general"
     style: str = "professional"
-    requirements: Dict[str, Any] = field(default_factory=dict)
-    constraints: Dict[str, Any] = field(default_factory=dict)
-    optimization_target: Optional[Dict[str, Any]] = None
+    requirements: dict[str, Any] = field(default_factory=dict)
+    constraints: dict[str, Any] = field(default_factory=dict)
+    optimization_target: dict[str, Any] | None = None
 
 
 @dataclass
@@ -205,14 +206,14 @@ class ContentResult:
 
     request_id: str
     content: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
     scores: ScoringMetrics
-    search_results: Optional[REERSearchResult] = None
-    optimization_result: Optional[OptimizationResult] = None
-    performance_metrics: Optional[PerformanceMetrics] = None
+    search_results: REERSearchResult | None = None
+    optimization_result: OptimizationResult | None = None
+    performance_metrics: PerformanceMetrics | None = None
     generation_time: float = 0.0
     success: bool = True
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 @dataclass
@@ -220,11 +221,11 @@ class PipelineResult:
     """Result of complete pipeline execution."""
 
     pipeline_id: str
-    results: List[ContentResult]
-    summary_metrics: Dict[str, Any]
+    results: list[ContentResult]
+    summary_metrics: dict[str, Any]
     total_time: float
     success_rate: float
-    best_content: Optional[ContentResult] = None
+    best_content: ContentResult | None = None
 
 
 # DSPy Signatures
@@ -325,7 +326,7 @@ class REERDSPyPipeline:
 
         # Pipeline state
         self._initialized = False
-        self.execution_history: List[Dict[str, Any]] = []
+        self.execution_history: list[dict[str, Any]] = []
 
         logger.info(f"Initialized DSPy pipeline {self.pipeline_id}")
 
@@ -358,7 +359,7 @@ class REERDSPyPipeline:
             logger.info("DSPy pipeline initialized successfully")
 
         except Exception as e:
-            logger.error(f"Failed to initialize pipeline: {e}")
+            logger.exception(f"Failed to initialize pipeline: {e}")
             raise ValidationError(f"Pipeline initialization failed: {e}")
 
     async def generate_content(self, request: ContentRequest) -> ContentResult:
@@ -503,7 +504,7 @@ class REERDSPyPipeline:
 
         except Exception as e:
             generation_time = time.time() - start_time
-            logger.error(f"Content generation failed for {request.request_id}: {e}")
+            logger.exception(f"Content generation failed for {request.request_id}: {e}")
 
             return ContentResult(
                 request_id=request.request_id,
@@ -515,7 +516,7 @@ class REERDSPyPipeline:
                 error_message=str(e),
             )
 
-    async def generate_batch(self, requests: List[ContentRequest]) -> PipelineResult:
+    async def generate_batch(self, requests: list[ContentRequest]) -> PipelineResult:
         """Generate content for multiple requests.
 
         Args:
@@ -589,8 +590,8 @@ class REERDSPyPipeline:
 
     async def optimize_with_gepa(
         self,
-        optimization_target: Dict[str, Any],
-        content_requests: Optional[List[ContentRequest]] = None,
+        optimization_target: dict[str, Any],
+        content_requests: list[ContentRequest] | None = None,
     ) -> OptimizationResult:
         """Optimize content generation using GEPA trainer.
 
@@ -620,7 +621,7 @@ class REERDSPyPipeline:
             return result
 
         except Exception as e:
-            logger.error(f"GEPA optimization failed: {e}")
+            logger.exception(f"GEPA optimization failed: {e}")
             raise OptimizationError(f"GEPA optimization failed: {e}")
 
     def _format_search_context(self, search_results: REERSearchResult) -> str:
@@ -731,8 +732,8 @@ class REERDSPyPipeline:
         return "\n".join(feedback_parts)
 
     def _calculate_summary_metrics(
-        self, results: List[ContentResult]
-    ) -> Dict[str, Any]:
+        self, results: list[ContentResult]
+    ) -> dict[str, Any]:
         """Calculate summary metrics from results."""
         if not results:
             return {}
@@ -825,7 +826,7 @@ class REERDSPyPipeline:
         except Exception as e:
             logger.warning(f"Failed to save intermediate result: {e}")
 
-    async def get_pipeline_status(self) -> Dict[str, Any]:
+    async def get_pipeline_status(self) -> dict[str, Any]:
         """Get current pipeline status and configuration.
 
         Returns:
@@ -890,7 +891,7 @@ class PipelineFactory:
     def create_full_pipeline(
         provider: str = "openai",
         model: str = "gpt-3.5-turbo",
-        output_directory: Optional[Path] = None,
+        output_directory: Path | None = None,
         **kwargs,
     ) -> REERDSPyPipeline:
         """Create a full-featured pipeline with all components.
@@ -923,7 +924,7 @@ class PipelineFactory:
     def create_optimization_pipeline(
         provider: str = "openai",
         model: str = "gpt-3.5-turbo",
-        optimization_config: Optional[OptimizationConfig] = None,
+        optimization_config: OptimizationConfig | None = None,
         **kwargs,
     ) -> REERDSPyPipeline:
         """Create a pipeline optimized for GEPA training.

@@ -8,33 +8,22 @@ Optimizes DSPy programs using evolutionary algorithms with social media patterns
 
 import asyncio
 import json
-import sys
 from pathlib import Path
-from typing import Optional, List, Dict, Any
-import typer
-from rich.console import Console
-from rich.progress import (
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    BarColumn,
-    TimeElapsedColumn,
-)
-from rich.table import Table
-from rich.panel import Panel
-from rich.tree import Tree
-from rich.live import Live
-from rich import print as rprint
-from loguru import logger
+import sys
 import time
+from typing import Any
+
+from loguru import logger
+from rich.console import Console
+from rich.live import Live
+from rich.table import Table
+import typer
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from core import REERGEPATrainer, OptimizationResult, Individual, Population
-from dspy_program import ContentGeneratorModule, PipelineConfig
-from social import SocialContentPipeline, Platform, ContentType
+from core import Individual, Population, REERGEPATrainer
 
 app = typer.Typer(
     name="social-gepa",
@@ -83,12 +72,12 @@ def tune(
         "-f",
         help="Fitness metric (accuracy, engagement, combined)",
     ),
-    target_platforms: Optional[List[str]] = typer.Option(
+    target_platforms: list[str] | None = typer.Option(
         None,
         "--platform",
         help="Target platforms for optimization (can be used multiple times)",
     ),
-    content_types: Optional[List[str]] = typer.Option(
+    content_types: list[str] | None = typer.Option(
         None,
         "--content-type",
         help="Content types to optimize for (can be used multiple times)",
@@ -107,7 +96,7 @@ def tune(
     save_checkpoints: bool = typer.Option(
         True, "--checkpoints/--no-checkpoints", help="Save optimization checkpoints"
     ),
-    resume_from: Optional[Path] = typer.Option(
+    resume_from: Path | None = typer.Option(
         None, "--resume-from", help="Resume optimization from checkpoint"
     ),
     verbose: bool = typer.Option(
@@ -199,7 +188,7 @@ def tune(
         # Display results
         _display_tuning_results(results)
 
-        console.print(f"[green]✓ GEPA tuning completed successfully![/green]")
+        console.print("[green]✓ GEPA tuning completed successfully![/green]")
         console.print(f"[cyan]Tuned models saved to:[/cyan] {output_dir}")
 
     except Exception as e:
@@ -218,15 +207,15 @@ async def _run_gepa_tuning(
     crossover_rate: float,
     elite_size: int,
     fitness_metric: str,
-    target_platforms: Optional[List[str]],
-    content_types: Optional[List[str]],
+    target_platforms: list[str] | None,
+    content_types: list[str] | None,
     convergence_threshold: float,
     patience: int,
     parallel_evaluation: bool,
     save_checkpoints: bool,
-    resume_from: Optional[Path],
+    resume_from: Path | None,
     verbose: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run the GEPA tuning process."""
 
     results = {
@@ -249,7 +238,7 @@ async def _run_gepa_tuning(
     progress_table.add_column("Diversity", style="magenta")
     progress_table.add_column("Status", style="blue")
 
-    with Live(progress_table, refresh_per_second=2, console=console) as live:
+    with Live(progress_table, refresh_per_second=2, console=console):
 
         # Load training data
         console.print("[cyan]Loading training data...[/cyan]")
@@ -292,7 +281,9 @@ async def _run_gepa_tuning(
             )
 
             # Update population fitness
-            for individual, fitness in zip(population.individuals, fitness_scores):
+            for individual, fitness in zip(
+                population.individuals, fitness_scores, strict=False
+            ):
                 individual.fitness = fitness
 
             # Calculate statistics
@@ -347,7 +338,7 @@ async def _run_gepa_tuning(
                 generation > 0
                 and abs(current_best - best_fitness) < convergence_threshold
             ):
-                console.print(f"[green]Converged: Improvement below threshold[/green]")
+                console.print("[green]Converged: Improvement below threshold[/green]")
                 results["converged"] = True
                 break
 
@@ -376,12 +367,12 @@ async def _run_gepa_tuning(
 
 async def _evaluate_population_fitness(
     population: Population,
-    training_data: List[Dict],
+    training_data: list[dict],
     fitness_metric: str,
-    target_platforms: Optional[List[str]],
-    content_types: Optional[List[str]],
+    target_platforms: list[str] | None,
+    content_types: list[str] | None,
     parallel_evaluation: bool,
-) -> List[float]:
+) -> list[float]:
     """Evaluate fitness for entire population."""
 
     fitness_scores = []
@@ -417,10 +408,10 @@ async def _evaluate_population_fitness(
 
 async def _evaluate_individual_fitness(
     individual: Individual,
-    training_data: List[Dict],
+    training_data: list[dict],
     fitness_metric: str,
-    target_platforms: Optional[List[str]],
-    content_types: Optional[List[str]],
+    target_platforms: list[str] | None,
+    content_types: list[str] | None,
 ) -> float:
     """Evaluate fitness for a single individual."""
 
@@ -445,10 +436,10 @@ async def _evaluate_individual_fitness(
     # Metric-specific calculation
     if fitness_metric == "accuracy":
         return base_fitness * 0.9
-    elif fitness_metric == "engagement":
+    if fitness_metric == "engagement":
         return base_fitness * 1.1
-    else:  # combined
-        return base_fitness
+    # combined
+    return base_fitness
 
     return min(base_fitness, 1.0)  # Cap at 1.0
 
@@ -474,7 +465,7 @@ async def _save_checkpoint(population: Population, checkpoint_file: Path):
         json.dump(checkpoint_data, f, indent=2)
 
 
-async def _save_final_results(results: Dict[str, Any], output_dir: Path):
+async def _save_final_results(results: dict[str, Any], output_dir: Path):
     """Save final optimization results."""
 
     # Save optimization history
@@ -510,7 +501,7 @@ async def _save_final_results(results: Dict[str, Any], output_dir: Path):
         json.dump(summary, f, indent=2)
 
 
-def _display_tuning_results(results: Dict[str, Any]):
+def _display_tuning_results(results: dict[str, Any]):
     """Display tuning results in a formatted view."""
 
     # Results summary
@@ -554,13 +545,13 @@ def _display_tuning_results(results: Dict[str, Any]):
 def evaluate(
     model_file: Path = typer.Argument(..., help="Tuned model file to evaluate"),
     test_data: Path = typer.Argument(..., help="Test data file"),
-    output_file: Optional[Path] = typer.Option(
+    output_file: Path | None = typer.Option(
         None, "--output", "-o", help="Output file for evaluation results"
     ),
-    metrics: Optional[List[str]] = typer.Option(
+    metrics: list[str] | None = typer.Option(
         None, "--metric", "-m", help="Evaluation metrics (can be used multiple times)"
     ),
-    platforms: Optional[List[str]] = typer.Option(
+    platforms: list[str] | None = typer.Option(
         None,
         "--platform",
         "-p",
@@ -641,7 +632,7 @@ def compare(
 
     import random
 
-    for i, model_file in enumerate(model_files[:top_k]):
+    for _i, model_file in enumerate(model_files[:top_k]):
         comparison_table.add_row(
             model_file.name,
             f"{random.uniform(0.7, 0.95):.4f}",

@@ -7,35 +7,34 @@ Provides comprehensive metrics, benchmarking, and performance analysis.
 """
 
 import asyncio
+from datetime import datetime
 import json
-import sys
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Tuple
-import typer
+import statistics
+import sys
+import time
+from typing import Any
+
+from loguru import logger
 from rich.console import Console
 from rich.progress import (
+    BarColumn,
     Progress,
     SpinnerColumn,
     TextColumn,
-    BarColumn,
     TimeElapsedColumn,
 )
 from rich.table import Table
-from rich.panel import Panel
 from rich.tree import Tree
-from rich import print as rprint
-from loguru import logger
-import time
-from datetime import datetime
-import statistics
+import typer
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from social import SocialKPICalculator, PostMetrics, KPIResult, KPIDashboard
-from core import REERCandidateScorer, ScoringMetrics
-from plugins import HeuristicScorer, ContentMetrics
+from core import REERCandidateScorer
+from plugins import ContentMetrics, HeuristicScorer
+from social import PostMetrics, SocialKPICalculator
 
 app = typer.Typer(
     name="social-eval",
@@ -56,25 +55,25 @@ logger.add(
 @app.command()
 def evaluate(
     content_file: Path = typer.Argument(..., help="Content file to evaluate"),
-    reference_file: Optional[Path] = typer.Option(
+    reference_file: Path | None = typer.Option(
         None, "--reference", "-r", help="Reference content file for comparison"
     ),
-    output_file: Optional[Path] = typer.Option(
+    output_file: Path | None = typer.Option(
         None, "--output", "-o", help="Output file for evaluation results"
     ),
-    metrics: Optional[List[str]] = typer.Option(
+    metrics: list[str] | None = typer.Option(
         None,
         "--metric",
         "-m",
         help="Specific metrics to evaluate (can be used multiple times)",
     ),
-    platforms: Optional[List[str]] = typer.Option(
+    platforms: list[str] | None = typer.Option(
         None,
         "--platform",
         "-p",
         help="Filter by platforms (can be used multiple times)",
     ),
-    evaluators: Optional[List[str]] = typer.Option(
+    evaluators: list[str] | None = typer.Option(
         None,
         "--evaluator",
         "-e",
@@ -174,7 +173,7 @@ def evaluate(
                 json.dump(results, f, indent=2, default=str)
             console.print(f"[green]Evaluation results saved to:[/green] {output_file}")
 
-        console.print(f"[green]✓ Content evaluation completed successfully![/green]")
+        console.print("[green]✓ Content evaluation completed successfully![/green]")
 
     except Exception as e:
         logger.error(f"Evaluation failed: {e}")
@@ -184,13 +183,13 @@ def evaluate(
 
 async def _run_evaluation(
     content_file: Path,
-    reference_file: Optional[Path],
-    metrics: Optional[List[str]],
-    platforms: Optional[List[str]],
-    evaluators: Optional[List[str]],
+    reference_file: Path | None,
+    metrics: list[str] | None,
+    platforms: list[str] | None,
+    evaluators: list[str] | None,
     include_human_eval: bool,
     verbose: bool,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run comprehensive content evaluation."""
 
     results = {
@@ -333,8 +332,8 @@ async def _run_evaluation(
 
 
 async def _evaluate_with_kpi(
-    kpi_calculator: SocialKPICalculator, content_item: Dict[str, Any]
-) -> Dict[str, Any]:
+    kpi_calculator: SocialKPICalculator, content_item: dict[str, Any]
+) -> dict[str, Any]:
     """Evaluate content using KPI calculator."""
 
     # Mock KPI evaluation
@@ -365,8 +364,8 @@ async def _evaluate_with_kpi(
 
 
 async def _evaluate_with_heuristic(
-    heuristic_scorer: HeuristicScorer, content_item: Dict[str, Any]
-) -> Dict[str, Any]:
+    heuristic_scorer: HeuristicScorer, content_item: dict[str, Any]
+) -> dict[str, Any]:
     """Evaluate content using heuristic scorer."""
 
     # Mock heuristic evaluation
@@ -401,8 +400,8 @@ async def _evaluate_with_heuristic(
 
 
 async def _evaluate_with_reer(
-    reer_scorer: REERCandidateScorer, content_item: Dict[str, Any]
-) -> Dict[str, Any]:
+    reer_scorer: REERCandidateScorer, content_item: dict[str, Any]
+) -> dict[str, Any]:
     """Evaluate content using REER candidate scorer."""
 
     # Mock REER evaluation
@@ -419,7 +418,7 @@ async def _evaluate_with_reer(
     }
 
 
-async def _evaluate_with_human(content_item: Dict[str, Any]) -> Dict[str, Any]:
+async def _evaluate_with_human(content_item: dict[str, Any]) -> dict[str, Any]:
     """Mock human evaluation (would be manual in real implementation)."""
 
     # Mock human evaluation scores
@@ -437,8 +436,8 @@ async def _evaluate_with_human(content_item: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _calculate_summary_metrics(
-    results: List[Dict[str, Any]], evaluators: List[str]
-) -> Dict[str, Any]:
+    results: list[dict[str, Any]], evaluators: list[str]
+) -> dict[str, Any]:
     """Calculate summary metrics across all evaluations."""
 
     summary = {}
@@ -452,8 +451,8 @@ def _calculate_summary_metrics(
 
                 # Extract numeric scores
                 numeric_scores = []
-                for key, value in scores.items():
-                    if isinstance(value, (int, float)):
+                for _key, value in scores.items():
+                    if isinstance(value, int | float):
                         numeric_scores.append(value)
 
                 if numeric_scores:
@@ -476,7 +475,7 @@ def _calculate_summary_metrics(
     return summary
 
 
-def _calculate_platform_breakdown(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _calculate_platform_breakdown(results: list[dict[str, Any]]) -> dict[str, Any]:
     """Calculate metrics breakdown by platform."""
 
     platform_stats = {}
@@ -496,8 +495,8 @@ def _calculate_platform_breakdown(results: List[Dict[str, Any]]) -> Dict[str, An
 
             # Extract numeric scores
             numeric_scores = []
-            for key, value in scores.items():
-                if isinstance(value, (int, float)):
+            for _key, value in scores.items():
+                if isinstance(value, int | float):
                     numeric_scores.append(value)
 
             if numeric_scores:
@@ -516,10 +515,10 @@ def _calculate_platform_breakdown(results: List[Dict[str, Any]]) -> Dict[str, An
 
 
 async def _run_comparative_analysis(
-    current_results: List[Dict[str, Any]],
-    reference_data: List[Dict[str, Any]],
-    evaluator_instances: Dict[str, Any],
-) -> Dict[str, Any]:
+    current_results: list[dict[str, Any]],
+    reference_data: list[dict[str, Any]],
+    evaluator_instances: dict[str, Any],
+) -> dict[str, Any]:
     """Run comparative analysis against reference data."""
 
     # Evaluate reference data with same evaluators
@@ -560,7 +559,7 @@ async def _run_comparative_analysis(
     }
 
     # Calculate improvements and regressions
-    for evaluator in evaluator_instances.keys():
+    for evaluator in evaluator_instances:
         if (
             evaluator in comparison["current_summary"]
             and evaluator in comparison["reference_summary"]
@@ -578,7 +577,7 @@ async def _run_comparative_analysis(
     return comparison
 
 
-def _display_evaluation_results(results: Dict[str, Any]):
+def _display_evaluation_results(results: dict[str, Any]):
     """Display evaluation results in formatted tables."""
 
     # Summary metrics table
@@ -644,7 +643,7 @@ def _display_evaluation_results(results: Dict[str, Any]):
         console.print()
 
 
-async def _generate_evaluation_report(results: Dict[str, Any], report_file: Path):
+async def _generate_evaluation_report(results: dict[str, Any], report_file: Path):
     """Generate detailed evaluation report."""
 
     report = {
@@ -721,13 +720,13 @@ def benchmark(
         "-o",
         help="Output directory for benchmark results",
     ),
-    metrics: Optional[List[str]] = typer.Option(
+    metrics: list[str] | None = typer.Option(
         None,
         "--metric",
         "-m",
         help="Metrics to include in benchmark (can be used multiple times)",
     ),
-    baseline_model: Optional[str] = typer.Option(
+    baseline_model: str | None = typer.Option(
         None, "--baseline", help="Baseline model name for comparison"
     ),
     iterations: int = typer.Option(
@@ -777,7 +776,7 @@ def benchmark(
             # Mock evaluation for each iteration
             iteration_results = []
 
-            for iteration in range(iterations):
+            for _iteration in range(iterations):
                 # Simulate model evaluation
                 time.sleep(0.1)
 
@@ -824,7 +823,7 @@ def benchmark(
     console.print(f"[green]Benchmark results saved to:[/green] {results_file}")
 
 
-def _display_benchmark_results(results: Dict[str, Any], baseline_model: Optional[str]):
+def _display_benchmark_results(results: dict[str, Any], baseline_model: str | None):
     """Display benchmark results in formatted table."""
 
     # Main results table
@@ -868,7 +867,7 @@ def _display_benchmark_results(results: Dict[str, Any], baseline_model: Optional
 def compare(
     eval_results_1: Path = typer.Argument(..., help="First evaluation results file"),
     eval_results_2: Path = typer.Argument(..., help="Second evaluation results file"),
-    output_file: Optional[Path] = typer.Option(
+    output_file: Path | None = typer.Option(
         None, "--output", "-o", help="Output file for comparison results"
     ),
     significance_threshold: float = typer.Option(
@@ -893,7 +892,7 @@ def compare(
     with open(eval_results_2) as f:
         results_2 = json.load(f)
 
-    console.print(f"[cyan]Comparing evaluation results:[/cyan]")
+    console.print("[cyan]Comparing evaluation results:[/cyan]")
     console.print(f"  File 1: {eval_results_1}")
     console.print(f"  File 2: {eval_results_2}")
     console.print()
@@ -914,8 +913,8 @@ def compare(
 
 
 def _compare_evaluation_results(
-    results_1: Dict[str, Any], results_2: Dict[str, Any], threshold: float
-) -> Dict[str, Any]:
+    results_1: dict[str, Any], results_2: dict[str, Any], threshold: float
+) -> dict[str, Any]:
     """Compare two evaluation result sets."""
 
     comparison = {
@@ -980,7 +979,7 @@ def _compare_evaluation_results(
     return comparison
 
 
-def _display_comparison_results(comparison: Dict[str, Any]):
+def _display_comparison_results(comparison: dict[str, Any]):
     """Display comparison results."""
 
     # Comparison table
@@ -1009,7 +1008,7 @@ def _display_comparison_results(comparison: Dict[str, Any]):
 
     # Summary
     summary = comparison["summary"]
-    console.print(f"\n[cyan]Summary:[/cyan]")
+    console.print("\n[cyan]Summary:[/cyan]")
     console.print(f"  • Total metrics compared: {summary['total_metrics_compared']}")
     console.print(f"  • Significant differences: {summary['significant_differences']}")
     console.print(f"  • Improvements: [green]{summary['improvements']}[/green]")
@@ -1017,7 +1016,6 @@ def _display_comparison_results(comparison: Dict[str, Any]):
 
 
 import random  # Add this import at the top level
-
 
 if __name__ == "__main__":
     app()

@@ -4,12 +4,12 @@ Normalizes X (Twitter) analytics data into a standardized format
 for consistent processing across the REER × DSPy × MLX pipeline.
 """
 
-import logging
-from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass, field
+from datetime import datetime
+from datetime import timezone
 from enum import Enum
-
+import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +35,11 @@ class NormalizedMetric:
     """Standardized social media metric."""
 
     metric_type: XMetricType
-    value: Union[int, float]
+    value: int | float
     timestamp: datetime
-    post_id: Optional[str] = None
-    account_id: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    post_id: str | None = None
+    account_id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -51,15 +51,15 @@ class NormalizedPost:
     author_id: str
     timestamp: datetime
     platform: str = "x"
-    metrics: List[NormalizedMetric] = field(default_factory=list)
-    engagement_rate: Optional[float] = None
-    reach: Optional[int] = None
-    impressions: Optional[int] = None
-    url: Optional[str] = None
-    media_urls: List[str] = field(default_factory=list)
-    hashtags: List[str] = field(default_factory=list)
-    mentions: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metrics: list[NormalizedMetric] = field(default_factory=list)
+    engagement_rate: float | None = None
+    reach: int | None = None
+    impressions: int | None = None
+    url: str | None = None
+    media_urls: list[str] = field(default_factory=list)
+    hashtags: list[str] = field(default_factory=list)
+    mentions: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class XAnalyticsNormalizer:
@@ -69,7 +69,7 @@ class XAnalyticsNormalizer:
         """Initialize the normalizer."""
         self.logger = logging.getLogger(__name__)
 
-    def normalize_tweet_data(self, raw_data: Dict[str, Any]) -> NormalizedPost:
+    def normalize_tweet_data(self, raw_data: dict[str, Any]) -> NormalizedPost:
         """
         Normalize raw tweet data from X API v2.
 
@@ -150,12 +150,12 @@ class XAnalyticsNormalizer:
             return normalized_post
 
         except Exception as e:
-            self.logger.error(f"Failed to normalize tweet data: {e}")
+            self.logger.exception(f"Failed to normalize tweet data: {e}")
             raise ValueError(f"Invalid tweet data format: {e}")
 
     def normalize_analytics_batch(
-        self, analytics_data: List[Dict[str, Any]]
-    ) -> List[NormalizedPost]:
+        self, analytics_data: list[dict[str, Any]]
+    ) -> list[NormalizedPost]:
         """
         Normalize a batch of analytics data.
 
@@ -182,11 +182,11 @@ class XAnalyticsNormalizer:
 
     def _extract_metrics(
         self,
-        public_metrics: Dict[str, Any],
+        public_metrics: dict[str, Any],
         post_id: str,
         author_id: str,
         timestamp: datetime,
-    ) -> List[NormalizedMetric]:
+    ) -> list[NormalizedMetric]:
         """Extract and normalize individual metrics."""
         metrics = []
 
@@ -201,7 +201,7 @@ class XAnalyticsNormalizer:
         for api_field, metric_type in metric_mapping.items():
             if api_field in public_metrics:
                 value = public_metrics[api_field]
-                if isinstance(value, (int, float)) and value >= 0:
+                if isinstance(value, int | float) and value >= 0:
                     metric = NormalizedMetric(
                         metric_type=metric_type,
                         value=value,
@@ -214,8 +214,8 @@ class XAnalyticsNormalizer:
         return metrics
 
     def _calculate_engagement_rate(
-        self, public_metrics: Dict[str, Any]
-    ) -> Optional[float]:
+        self, public_metrics: dict[str, Any]
+    ) -> float | None:
         """Calculate engagement rate from public metrics."""
         try:
             impressions = public_metrics.get("impression_count", 0)
@@ -235,8 +235,8 @@ class XAnalyticsNormalizer:
             return None
 
     def normalize_user_metrics(
-        self, user_data: Dict[str, Any]
-    ) -> List[NormalizedMetric]:
+        self, user_data: dict[str, Any]
+    ) -> list[NormalizedMetric]:
         """
         Normalize user-level metrics from X API.
 
@@ -262,7 +262,7 @@ class XAnalyticsNormalizer:
         for api_field, metric_type in user_metric_mapping.items():
             if api_field in public_metrics:
                 value = public_metrics[api_field]
-                if isinstance(value, (int, float)) and value >= 0:
+                if isinstance(value, int | float) and value >= 0:
                     # Handle standard metrics
                     if isinstance(metric_type, XMetricType):
                         metric = NormalizedMetric(
@@ -289,7 +289,7 @@ class XAnalyticsNormalizer:
 
         return metrics
 
-    def extract_trending_data(self, trends_data: Dict[str, Any]) -> Dict[str, Any]:
+    def extract_trending_data(self, trends_data: dict[str, Any]) -> dict[str, Any]:
         """
         Extract and normalize trending topics data.
 
@@ -323,5 +323,5 @@ class XAnalyticsNormalizer:
             }
 
         except Exception as e:
-            self.logger.error(f"Failed to normalize trends data: {e}")
+            self.logger.exception(f"Failed to normalize trends data: {e}")
             return {"trends": [], "error": str(e)}

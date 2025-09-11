@@ -5,20 +5,19 @@ performance, including engagement metrics, quality assessment, and
 business impact measurement with DSPy integration.
 """
 
-import asyncio
-import logging
-import time
-import statistics
-from typing import Dict, Any, List, Optional, Union, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
+from datetime import timezone
 from enum import Enum
 import json
-import math
+import logging
+import statistics
+import time
+from typing import Any
 
 try:
     import dspy
-    from dspy import Signature, InputField, OutputField, Module, Predict, ChainOfThought
+    from dspy import ChainOfThought, InputField, Module, OutputField, Predict, Signature
 
     DSPY_AVAILABLE = True
 except ImportError:
@@ -44,13 +43,13 @@ except ImportError:
     ChainOfThought = None
 
 try:
-    from ..core.exceptions import ValidationError, ScoringError
     from ..core.candidate_scorer import ScoringMetrics
+    from ..core.exceptions import ScoringError, ValidationError
 except ImportError:
     # Fallback for standalone usage
     try:
-        from core.exceptions import ValidationError, ScoringError
         from core.candidate_scorer import ScoringMetrics
+        from core.exceptions import ScoringError, ValidationError
     except ImportError:
         # Create mock classes if imports fail
         class ValidationError(Exception):
@@ -107,11 +106,11 @@ class MetricDefinition:
     description: str
     calculation_method: str
     weight: float = 1.0
-    target_value: Optional[float] = None
-    benchmark_value: Optional[float] = None
+    target_value: float | None = None
+    benchmark_value: float | None = None
     higher_is_better: bool = True
     unit: str = "score"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -122,9 +121,9 @@ class MetricResult:
     value: float
     normalized_value: float  # 0.0 to 1.0
     target_achieved: bool
-    benchmark_comparison: Optional[float] = None
+    benchmark_comparison: float | None = None
     confidence: float = 1.0
-    calculation_details: Dict[str, Any] = field(default_factory=dict)
+    calculation_details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -134,12 +133,12 @@ class PerformanceMetrics:
     evaluation_id: str
     content_id: str
     platform: str
-    metric_results: List[MetricResult]
+    metric_results: list[MetricResult]
     overall_score: float
     grade: str  # A, B, C, D, F
     evaluation_time: float
-    recommendations: List[str] = field(default_factory=list)
-    insights: Dict[str, Any] = field(default_factory=dict)
+    recommendations: list[str] = field(default_factory=list)
+    insights: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -150,7 +149,7 @@ class BenchmarkData:
     platform: str
     content_type: str
     audience_segment: str
-    metrics: Dict[str, float]
+    metrics: dict[str, float]
     sample_size: int
     time_period: str
     last_updated: datetime
@@ -307,7 +306,7 @@ class BenchmarkManager:
 
     def __init__(self):
         """Initialize benchmark manager."""
-        self.benchmarks: Dict[str, BenchmarkData] = {}
+        self.benchmarks: dict[str, BenchmarkData] = {}
         self._load_default_benchmarks()
 
     def _load_default_benchmarks(self) -> None:
@@ -368,7 +367,7 @@ class BenchmarkManager:
         platform: str,
         content_type: str = "general",
         audience_segment: str = "general",
-    ) -> Optional[BenchmarkData]:
+    ) -> BenchmarkData | None:
         """Get benchmark data for specific criteria."""
         key = f"{platform}_{content_type}"
         return self.benchmarks.get(key)
@@ -379,8 +378,8 @@ class BenchmarkManager:
         self.benchmarks[key] = benchmark
 
     def compare_to_benchmark(
-        self, metrics: Dict[str, float], benchmark: BenchmarkData
-    ) -> Dict[str, float]:
+        self, metrics: dict[str, float], benchmark: BenchmarkData
+    ) -> dict[str, float]:
         """Compare metrics to benchmark."""
         comparison = {}
 
@@ -407,7 +406,7 @@ class KPIEvaluator:
     """
 
     def __init__(
-        self, metrics: Optional[List[str]] = None, use_dspy_analysis: bool = True
+        self, metrics: list[str] | None = None, use_dspy_analysis: bool = True
     ):
         """Initialize KPI evaluator.
 
@@ -440,13 +439,13 @@ class KPIEvaluator:
 
         # Evaluation state
         self._initialized = False
-        self.evaluation_history: List[PerformanceMetrics] = []
+        self.evaluation_history: list[PerformanceMetrics] = []
 
         logger.info(f"Initialized KPI evaluator with {len(self.metrics)} metrics")
 
-    def _create_metric_definitions(self) -> Dict[str, MetricDefinition]:
+    def _create_metric_definitions(self) -> dict[str, MetricDefinition]:
         """Create standard metric definitions."""
-        definitions = {
+        return {
             "engagement_rate": MetricDefinition(
                 name="engagement_rate",
                 metric_type=MetricType.ENGAGEMENT,
@@ -519,8 +518,6 @@ class KPIEvaluator:
             ),
         }
 
-        return definitions
-
     async def initialize(self) -> None:
         """Initialize the KPI evaluator."""
         if self._initialized:
@@ -538,14 +535,14 @@ class KPIEvaluator:
             logger.info("KPI evaluator initialized successfully")
 
         except Exception as e:
-            logger.error(f"Failed to initialize KPI evaluator: {e}")
+            logger.exception(f"Failed to initialize KPI evaluator: {e}")
             raise ValidationError(f"KPI evaluator initialization failed: {e}")
 
     async def evaluate(
         self,
         content: str,
-        metadata: Dict[str, Any],
-        scoring_metrics: Optional[ScoringMetrics] = None,
+        metadata: dict[str, Any],
+        scoring_metrics: ScoringMetrics | None = None,
         benchmark_comparison: bool = True,
     ) -> PerformanceMetrics:
         """Evaluate content performance across all configured metrics.
@@ -630,7 +627,7 @@ class KPIEvaluator:
 
         except Exception as e:
             evaluation_time = time.time() - start_time
-            logger.error(f"KPI evaluation failed: {evaluation_id}: {e}")
+            logger.exception(f"KPI evaluation failed: {evaluation_id}: {e}")
 
             return PerformanceMetrics(
                 evaluation_id=evaluation_id,
@@ -647,8 +644,8 @@ class KPIEvaluator:
         self,
         metric_name: str,
         content: str,
-        metadata: Dict[str, Any],
-        scoring_metrics: Optional[ScoringMetrics] = None,
+        metadata: dict[str, Any],
+        scoring_metrics: ScoringMetrics | None = None,
     ) -> MetricResult:
         """Evaluate a specific metric."""
         definition = self.metric_definitions[metric_name]
@@ -716,8 +713,8 @@ class KPIEvaluator:
     async def _calculate_engagement_rate(
         self,
         content: str,
-        metadata: Dict[str, Any],
-        scoring_metrics: Optional[ScoringMetrics] = None,
+        metadata: dict[str, Any],
+        scoring_metrics: ScoringMetrics | None = None,
     ) -> float:
         """Calculate engagement rate metric."""
         if scoring_metrics:
@@ -748,8 +745,8 @@ class KPIEvaluator:
     async def _calculate_quality_score(
         self,
         content: str,
-        metadata: Dict[str, Any],
-        scoring_metrics: Optional[ScoringMetrics] = None,
+        metadata: dict[str, Any],
+        scoring_metrics: ScoringMetrics | None = None,
     ) -> float:
         """Calculate quality score metric."""
         if scoring_metrics:
@@ -774,8 +771,8 @@ class KPIEvaluator:
     async def _calculate_viral_potential(
         self,
         content: str,
-        metadata: Dict[str, Any],
-        scoring_metrics: Optional[ScoringMetrics] = None,
+        metadata: dict[str, Any],
+        scoring_metrics: ScoringMetrics | None = None,
     ) -> float:
         """Calculate viral potential metric."""
         if scoring_metrics:
@@ -806,8 +803,8 @@ class KPIEvaluator:
     async def _calculate_brand_alignment(
         self,
         content: str,
-        metadata: Dict[str, Any],
-        scoring_metrics: Optional[ScoringMetrics] = None,
+        metadata: dict[str, Any],
+        scoring_metrics: ScoringMetrics | None = None,
     ) -> float:
         """Calculate brand alignment metric."""
         if scoring_metrics:
@@ -825,8 +822,8 @@ class KPIEvaluator:
     async def _calculate_reach_efficiency(
         self,
         content: str,
-        metadata: Dict[str, Any],
-        scoring_metrics: Optional[ScoringMetrics] = None,
+        metadata: dict[str, Any],
+        scoring_metrics: ScoringMetrics | None = None,
     ) -> float:
         """Calculate reach efficiency metric."""
         # Estimate reach efficiency based on content characteristics
@@ -851,8 +848,8 @@ class KPIEvaluator:
     async def _calculate_sentiment_score(
         self,
         content: str,
-        metadata: Dict[str, Any],
-        scoring_metrics: Optional[ScoringMetrics] = None,
+        metadata: dict[str, Any],
+        scoring_metrics: ScoringMetrics | None = None,
     ) -> float:
         """Calculate sentiment score metric."""
         # Basic sentiment analysis
@@ -875,8 +872,8 @@ class KPIEvaluator:
     async def _calculate_conversion_rate(
         self,
         content: str,
-        metadata: Dict[str, Any],
-        scoring_metrics: Optional[ScoringMetrics] = None,
+        metadata: dict[str, Any],
+        scoring_metrics: ScoringMetrics | None = None,
     ) -> float:
         """Calculate conversion rate metric."""
         # Estimate conversion potential
@@ -899,7 +896,7 @@ class KPIEvaluator:
         return min(10.0, conversion_score)
 
     async def _enhance_with_dspy_analysis(
-        self, content: str, metadata: Dict[str, Any], metric_results: List[MetricResult]
+        self, content: str, metadata: dict[str, Any], metric_results: list[MetricResult]
     ) -> None:
         """Enhance metric results with DSPy analysis."""
         if not self.analysis_module:
@@ -946,7 +943,7 @@ class KPIEvaluator:
         except Exception as e:
             logger.warning(f"DSPy enhancement failed: {e}")
 
-    def _calculate_overall_score(self, metric_results: List[MetricResult]) -> float:
+    def _calculate_overall_score(self, metric_results: list[MetricResult]) -> float:
         """Calculate weighted overall score."""
         if not metric_results:
             return 0.0
@@ -967,18 +964,17 @@ class KPIEvaluator:
         """Calculate letter grade from overall score."""
         if overall_score >= 9.0:
             return "A"
-        elif overall_score >= 8.0:
+        if overall_score >= 8.0:
             return "B"
-        elif overall_score >= 7.0:
+        if overall_score >= 7.0:
             return "C"
-        elif overall_score >= 6.0:
+        if overall_score >= 6.0:
             return "D"
-        else:
-            return "F"
+        return "F"
 
     async def _generate_recommendations(
-        self, metric_results: List[MetricResult], content: str, metadata: Dict[str, Any]
-    ) -> List[str]:
+        self, metric_results: list[MetricResult], content: str, metadata: dict[str, Any]
+    ) -> list[str]:
         """Generate improvement recommendations."""
         recommendations = []
 
@@ -1017,10 +1013,10 @@ class KPIEvaluator:
 
     async def _perform_benchmark_comparison(
         self,
-        metric_results: List[MetricResult],
+        metric_results: list[MetricResult],
         platform: str,
-        metadata: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any],
+    ) -> dict[str, Any]:
         """Perform benchmark comparison analysis."""
         insights = {}
 
@@ -1050,7 +1046,7 @@ class KPIEvaluator:
 
     async def get_evaluation_summary(
         self, time_window_hours: int = 24
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get summary of recent evaluations.
 
         Args:
@@ -1075,7 +1071,7 @@ class KPIEvaluator:
         ]
         grades = [eval_result.grade for eval_result in recent_evaluations]
 
-        summary = {
+        return {
             "total_evaluations": len(recent_evaluations),
             "time_window_hours": time_window_hours,
             "average_score": statistics.mean(overall_scores),
@@ -1087,10 +1083,8 @@ class KPIEvaluator:
             "improvement_rate": self._calculate_improvement_rate(recent_evaluations),
         }
 
-        return summary
-
     def _calculate_improvement_rate(
-        self, evaluations: List[PerformanceMetrics]
+        self, evaluations: list[PerformanceMetrics]
     ) -> float:
         """Calculate improvement rate over time."""
         if len(evaluations) < 2:
@@ -1113,7 +1107,7 @@ class KPIEvaluator:
         """Check if KPI evaluator is available."""
         return self._initialized
 
-    async def get_evaluator_status(self) -> Dict[str, Any]:
+    async def get_evaluator_status(self) -> dict[str, Any]:
         """Get evaluator status and configuration.
 
         Returns:

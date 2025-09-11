@@ -8,28 +8,28 @@ mock-first approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-import pytest
-import json
-import asyncio
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock, MagicMock, call
-from typing import Dict, Any, List, Optional, Union, Tuple
+from datetime import datetime, timedelta
+from datetime import timezone
+from typing import Any
+from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
+
 import numpy as np
+import pytest
 
 # Import statements that will fail initially (RED phase)
 try:
-    from gepa_optimization.gepa_optimizer import GEPAOptimizer
-    from gepa_optimization.genetic_algorithm import GeneticAlgorithm
-    from gepa_optimization.fitness_evaluator import FitnessEvaluator
-    from gepa_optimization.population_manager import PopulationManager
-    from gepa_optimization.mutation_engine import MutationEngine
-    from gepa_optimization.crossover_engine import CrossoverEngine
-    from gepa_optimization.selection_engine import SelectionEngine
     from gepa_optimization.convergence_monitor import ConvergenceMonitor
-    from gepa_optimization.schemas import Individual, Population, OptimizationResult
-    from core.exceptions import OptimizationError, ConvergenceError, FitnessError
+    from gepa_optimization.crossover_engine import CrossoverEngine
+    from gepa_optimization.fitness_evaluator import FitnessEvaluator
+    from gepa_optimization.genetic_algorithm import GeneticAlgorithm
+    from gepa_optimization.gepa_optimizer import GEPAOptimizer
+    from gepa_optimization.mutation_engine import MutationEngine
+    from gepa_optimization.population_manager import PopulationManager
+    from gepa_optimization.schemas import Individual, OptimizationResult, Population
+    from gepa_optimization.selection_engine import SelectionEngine
+
+    from core.exceptions import ConvergenceError, FitnessError, OptimizationError
 except ImportError:
     # Expected during RED phase - create mock classes for contract testing
     class GEPAOptimizer:
@@ -91,7 +91,7 @@ class TestGEPAOptimizationIntegration:
     """
 
     @pytest.fixture
-    def sample_optimization_config(self) -> Dict[str, Any]:
+    def sample_optimization_config(self) -> dict[str, Any]:
         """Sample GEPA optimization configuration."""
         return {
             "optimization_id": str(uuid4()),
@@ -152,7 +152,7 @@ class TestGEPAOptimizationIntegration:
         }
 
     @pytest.fixture
-    def sample_initial_population(self) -> List[Dict[str, Any]]:
+    def sample_initial_population(self) -> list[dict[str, Any]]:
         """Sample initial population for optimization."""
         return [
             {
@@ -215,7 +215,7 @@ class TestGEPAOptimizationIntegration:
         ]
 
     @pytest.fixture
-    def expected_optimization_result(self) -> Dict[str, Any]:
+    def expected_optimization_result(self) -> dict[str, Any]:
         """Expected optimization result after GEPA evolution."""
         return {
             "optimization_id": "opt_123",
@@ -429,9 +429,9 @@ class TestGEPAOptimizationIntegration:
     async def test_complete_gepa_optimization_pipeline(
         self,
         mock_gepa_optimizer: Mock,
-        sample_optimization_config: Dict[str, Any],
-        sample_initial_population: List[Dict[str, Any]],
-        expected_optimization_result: Dict[str, Any],
+        sample_optimization_config: dict[str, Any],
+        sample_initial_population: list[dict[str, Any]],
+        expected_optimization_result: dict[str, Any],
     ):
         """Test complete GEPA optimization pipeline: initialize → evolve → converge."""
         # Arrange
@@ -482,7 +482,7 @@ class TestGEPAOptimizationIntegration:
         )
 
     async def test_population_initialization_and_diversity(
-        self, mock_population_manager: Mock, sample_optimization_config: Dict[str, Any]
+        self, mock_population_manager: Mock, sample_optimization_config: dict[str, Any]
     ):
         """Test population initialization with diversity enforcement."""
         # Arrange
@@ -518,7 +518,7 @@ class TestGEPAOptimizationIntegration:
 
         # Act
         results = []
-        for i, strategy in enumerate(["diverse_random", "seeded", "historical"]):
+        for _i, strategy in enumerate(["diverse_random", "seeded", "historical"]):
             result = await mock_population_manager.create_initial_population(
                 size=50, strategy=strategy, config=sample_optimization_config
             )
@@ -536,8 +536,8 @@ class TestGEPAOptimizationIntegration:
     async def test_multi_objective_fitness_evaluation(
         self,
         mock_fitness_evaluator: Mock,
-        sample_initial_population: List[Dict[str, Any]],
-        sample_optimization_config: Dict[str, Any],
+        sample_initial_population: list[dict[str, Any]],
+        sample_optimization_config: dict[str, Any],
     ):
         """Test multi-objective fitness evaluation with weighted objectives."""
         # Arrange
@@ -618,7 +618,7 @@ class TestGEPAOptimizationIntegration:
         self,
         mock_mutation_engine: Mock,
         mock_crossover_engine: Mock,
-        sample_initial_population: List[Dict[str, Any]],
+        sample_initial_population: list[dict[str, Any]],
     ):
         """Test adaptive mutation and crossover operations based on evolution progress."""
         # Arrange
@@ -727,7 +727,7 @@ class TestGEPAOptimizationIntegration:
     async def test_convergence_detection_and_early_stopping(
         self,
         mock_convergence_monitor: Mock,
-        expected_optimization_result: Dict[str, Any],
+        expected_optimization_result: dict[str, Any],
     ):
         """Test convergence detection with multiple criteria and early stopping."""
         # Arrange
@@ -820,7 +820,7 @@ class TestGEPAOptimizationIntegration:
         self,
         mock_population_manager: Mock,
         mock_selection_engine: Mock,
-        sample_initial_population: List[Dict[str, Any]],
+        sample_initial_population: list[dict[str, Any]],
     ):
         """Test elite preservation and hall of fame management."""
         # Arrange
@@ -883,7 +883,7 @@ class TestGEPAOptimizationIntegration:
         )
 
     async def test_dynamic_parameter_adaptation(
-        self, mock_genetic_algorithm: Mock, expected_optimization_result: Dict[str, Any]
+        self, mock_genetic_algorithm: Mock, expected_optimization_result: dict[str, Any]
     ):
         """Test dynamic adaptation of genetic algorithm parameters during evolution."""
         # Arrange
@@ -954,7 +954,7 @@ class TestGEPAOptimizationIntegration:
         assert adaptation_history[1]["result"]["fitness_improvement_next_gen"] > 0
 
     async def test_constraint_satisfaction_and_validation(
-        self, mock_fitness_evaluator: Mock, sample_optimization_config: Dict[str, Any]
+        self, mock_fitness_evaluator: Mock, sample_optimization_config: dict[str, Any]
     ):
         """Test constraint satisfaction and validation during optimization."""
         # Arrange
@@ -1036,7 +1036,7 @@ class TestGEPAOptimizationIntegration:
     # Performance and Scalability Tests
 
     async def test_large_scale_optimization_performance(
-        self, mock_gepa_optimizer: Mock, sample_optimization_config: Dict[str, Any]
+        self, mock_gepa_optimizer: Mock, sample_optimization_config: dict[str, Any]
     ):
         """Test performance with large-scale optimization scenarios."""
         # Arrange
@@ -1108,9 +1108,7 @@ class TestGEPAOptimizationIntegration:
                 },
             },
             {
-                "timestamp": (
-                    datetime.now(timezone.utc) + timedelta(minutes=2)
-                ).isoformat(),
+                "timestamp": (datetime.now(timezone.utc) + timedelta(minutes=2)).isoformat(),
                 "generation": 20,
                 "current_best_fitness": 0.86,
                 "population_diversity": 0.42,
@@ -1124,26 +1122,11 @@ class TestGEPAOptimizationIntegration:
             },
         ]
 
-        real_time_analytics = {
-            "optimization_velocity": 0.04,  # fitness improvement per generation
-            "efficiency_trend": "improving",
-            "bottleneck_analysis": {
-                "current_bottleneck": "fitness_evaluation",
-                "bottleneck_impact": 0.25,
-                "optimization_suggestions": ["batch_evaluation", "gpu_acceleration"],
-            },
-            "quality_trends": {
-                "fitness_progression_rate": "linear",
-                "diversity_management": "optimal",
-                "convergence_prediction": "on_track",
-            },
-        }
-
         mock_gepa_optimizer.get_optimization_status.side_effect = monitoring_snapshots
 
         # Act
         status_progression = []
-        for i in range(len(monitoring_snapshots)):
+        for _i in range(len(monitoring_snapshots)):
             status = mock_gepa_optimizer.get_optimization_status()
             status_progression.append(status)
 
@@ -1174,7 +1157,7 @@ class TestGEPAOptimizationIntegration:
         self,
         mock_gepa_optimizer: Mock,
         mock_fitness_evaluator: Mock,
-        sample_optimization_config: Dict[str, Any],
+        sample_optimization_config: dict[str, Any],
     ):
         """Test error recovery mechanisms during optimization."""
         # Arrange
@@ -1227,7 +1210,7 @@ class TestGEPAOptimizationIntegration:
 
         # Act
         recovery_test_results = []
-        for i, scenario in enumerate(error_scenarios):
+        for _i, scenario in enumerate(error_scenarios):
             result = await mock_gepa_optimizer.optimize_with_constraints(
                 config=sample_optimization_config,
                 error_recovery=True,
@@ -1305,7 +1288,7 @@ class TestGEPAOptimizationIntegration:
 
         # Act
         mitigation_results = []
-        for i, scenario in enumerate(edge_case_scenarios):
+        for _i, scenario in enumerate(edge_case_scenarios):
             result = await mock_population_manager.maintain_diversity(
                 scenario=scenario["scenario"], current_state=scenario
             )

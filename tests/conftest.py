@@ -1,10 +1,12 @@
 """Pytest configuration and shared fixtures for REER × DSPy × MLX Social Posting Pack."""
 
+from collections.abc import Generator
 import os
-import pytest
 from pathlib import Path
+from typing import Any
 from unittest.mock import Mock, patch
-from typing import Generator, Any
+
+import pytest
 
 # Set test environment variables
 os.environ["TEST_MODE"] = "true"

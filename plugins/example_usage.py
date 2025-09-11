@@ -8,83 +8,64 @@ scoring heuristics, and provider routing system.
 
 import asyncio
 import os
-from typing import Dict, Any
 
 # Import plugin modules
 import sys
-import os
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+import contextlib
+
 from plugins import (
-    get_registry,
-    generate_text,
-    calculate_perplexity,
-    get_recommended_model,
-    create_platform_scorer,
-    score_content_async,
     ContentAnalyzer,
+    calculate_perplexity,
+    generate_text,
+    get_recommended_model,
+    get_registry,
+    score_content_async,
 )
 
 
 async def example_basic_usage():
     """Demonstrate basic usage of the plugin system."""
-    print("=== Basic Plugin System Usage ===\n")
 
     # Get the global registry
     registry = get_registry()
 
     # List available providers
-    print("Available providers:")
-    for provider in registry.list_providers():
-        print(
-            f"  - {provider.name} ({provider.scheme}://) - {', '.join(provider.capabilities)}"
-        )
-
-    print()
+    for _provider in registry.list_providers():
+        pass
 
 
 async def example_model_routing():
     """Demonstrate model routing with different URI schemes."""
-    print("=== Model Routing Examples ===\n")
 
     test_prompt = "Generate a compelling social media post about sustainable technology"
 
     # Example 1: Using dummy provider for testing
-    print("1. Using dummy provider:")
-    try:
-        response = await generate_text("dummy://test-model", test_prompt, max_tokens=50)
-        print(f"   Response: {response}\n")
-    except Exception as e:
-        print(f"   Error: {e}\n")
+    with contextlib.suppress(Exception):
+        await generate_text("dummy://test-model", test_prompt, max_tokens=50)
 
     # Example 2: Using MLX provider (if available)
-    print("2. Using MLX provider:")
     try:
         mlx_uri = "mlx://mlx-community/Llama-3.2-3B-Instruct-4bit"
-        response = await generate_text(
-            mlx_uri, test_prompt, max_tokens=50, temperature=0.7
-        )
-        print(f"   Response: {response}\n")
-    except Exception as e:
-        print(f"   Error: {e}\n")
+        await generate_text(mlx_uri, test_prompt, max_tokens=50, temperature=0.7)
+    except Exception:
+        pass
 
     # Example 3: Using DSPy provider (requires API keys)
-    print("3. Using DSPy provider:")
     try:
         if os.getenv("OPENAI_API_KEY"):
             dspy_uri = "dspy://openai/gpt-3.5-turbo"
-            response = await generate_text(dspy_uri, test_prompt, max_tokens=50)
-            print(f"   Response: {response}\n")
+            await generate_text(dspy_uri, test_prompt, max_tokens=50)
         else:
-            print("   Skipped: No OPENAI_API_KEY found\n")
-    except Exception as e:
-        print(f"   Error: {e}\n")
+            pass
+    except Exception:
+        pass
 
 
 async def example_content_scoring():
     """Demonstrate content scoring and heuristics."""
-    print("=== Content Scoring Examples ===\n")
 
     sample_texts = [
         "Check out this amazing new tech! 🚀 Perfect for sustainability lovers #tech #green",
@@ -94,31 +75,17 @@ async def example_content_scoring():
     ]
 
     # Analyze each text
-    for i, text in enumerate(sample_texts, 1):
-        print(f"Text {i}: \"{text[:50]}{'...' if len(text) > 50 else ''}\"")
+    for _i, text in enumerate(sample_texts, 1):
 
         # Basic content analysis
-        metrics = ContentAnalyzer.analyze_content(text)
-        print(f"  Word count: {metrics.word_count}")
-        print(f"  Readability: {metrics.readability_score:.1f}")
-        print(f"  Sentiment: {metrics.sentiment_score:.2f}")
-        print(f"  Hashtags: {metrics.hashtag_count}")
-        print(f"  Emojis: {metrics.emoji_count}")
-        print(f"  Engagement potential: {metrics.engagement_potential:.2f}")
+        ContentAnalyzer.analyze_content(text)
 
         # Platform-specific scoring
         twitter_score, components = await score_content_async(text, "twitter")
-        print(f"  Twitter score: {twitter_score:.2f}")
-        print(
-            f"    Components: {', '.join(f'{k}={v:.2f}' for k, v in components.items())}"
-        )
-
-        print()
 
 
 async def example_perplexity_calculation():
     """Demonstrate perplexity calculation."""
-    print("=== Perplexity Calculation ===\n")
 
     test_texts = [
         "This is a natural and fluent sentence.",
@@ -127,65 +94,41 @@ async def example_perplexity_calculation():
     ]
 
     for text in test_texts:
-        print(f'Text: "{text}"')
 
         # Calculate perplexity using dummy model
-        try:
-            perplexity = await calculate_perplexity("dummy://test-model", text)
-            print(f"  Perplexity: {perplexity:.2f}")
-        except Exception as e:
-            print(f"  Error: {e}")
-
-        print()
+        with contextlib.suppress(Exception):
+            await calculate_perplexity("dummy://test-model", text)
 
 
 async def example_recommendations():
     """Demonstrate model recommendations."""
-    print("=== Model Recommendations ===\n")
 
     use_cases = ["social_media", "creative", "analysis", "general"]
 
     for use_case in use_cases:
-        local_model = get_recommended_model(use_case, prefer_local=True)
-        cloud_model = get_recommended_model(use_case, prefer_local=False)
-
-        print(f"Use case: {use_case}")
-        print(f"  Local recommendation: {local_model}")
-        print(f"  Cloud recommendation: {cloud_model}")
-        print()
+        get_recommended_model(use_case, prefer_local=True)
+        get_recommended_model(use_case, prefer_local=False)
 
 
 async def example_health_check():
     """Demonstrate health checking of providers."""
-    print("=== Provider Health Check ===\n")
 
     registry = get_registry()
     health_status = await registry.health_check()
 
-    for provider, status in health_status.items():
-        print(f"Provider: {provider}")
-        print(f"  Available: {status.get('available', False)}")
+    for _provider, status in health_status.items():
 
         if status.get("error"):
-            print(f"  Error: {status['error']}")
+            pass
         else:
-            print(f"  Scheme: {status.get('scheme', 'unknown')}")
-            print(f"  Default model: {status.get('default_model', 'unknown')}")
-            print(f"  Capabilities: {', '.join(status.get('capabilities', []))}")
 
             if "test_generation" in status:
-                print(f"  Test generation: {status['test_generation']}")
                 if status.get("test_response_length"):
-                    print(f"  Test response length: {status['test_response_length']}")
-
-        print()
+                    pass
 
 
 async def main():
     """Run all examples."""
-    print("REER × DSPy × MLX Plugin System Examples")
-    print("=" * 50)
-    print()
 
     try:
         await example_basic_usage()
@@ -195,10 +138,8 @@ async def main():
         await example_recommendations()
         await example_health_check()
 
-        print("✅ All examples completed successfully!")
-
-    except Exception as e:
-        print(f"❌ Error running examples: {e}")
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

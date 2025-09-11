@@ -4,22 +4,18 @@ Demonstrates the integration of X analytics normalization, DSPy content generati
 and KPI calculation for social media management.
 """
 
-import asyncio
+from datetime import datetime, timedelta
+from datetime import timezone
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List
 
-from .collectors.x_normalize import XAnalyticsNormalizer, NormalizedPost
+from .collectors.x_normalize import XAnalyticsNormalizer
 from .dspy_modules import (
-    SocialContentPipeline,
     ContentBrief,
     ContentType,
     Platform,
-    SocialContentIdeator,
-    SocialContentComposer,
+    SocialContentPipeline,
 )
-from .kpis import SocialKPICalculator, PostMetrics, KPICategory
-
+from .kpis import PostMetrics, SocialKPICalculator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -167,7 +163,7 @@ def example_kpi_calculation():
         total_followers=total_followers,
     )
 
-    logger.info(f"\nDashboard Summary:")
+    logger.info("\nDashboard Summary:")
     logger.info(f"  Total posts analyzed: {dashboard.total_posts}")
     logger.info(
         f"  Overall engagement rate: {dashboard.summary.get('overall_engagement_rate', 0):.2f}%"
@@ -255,9 +251,9 @@ def main():
 
     try:
         # Run individual examples
-        normalized_data = example_x_analytics_normalization()
-        content_brief = example_content_generation()
-        dashboard = example_kpi_calculation()
+        example_x_analytics_normalization()
+        example_content_generation()
+        example_kpi_calculation()
 
         # Run integrated workflow
         integrated_results = example_integrated_workflow()
@@ -273,7 +269,7 @@ def main():
         return integrated_results
 
     except Exception as e:
-        logger.error(f"Example execution failed: {e}")
+        logger.exception(f"Example execution failed: {e}")
         raise
 
 

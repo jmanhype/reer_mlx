@@ -4,13 +4,11 @@ Calculates key performance indicators for social media content including
 engagement rates, reach metrics, virality scores, and platform-specific KPIs.
 """
 
-import logging
-import math
-from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Union, Tuple
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
-
+import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +56,7 @@ class PostMetrics:
     link_clicks: int = 0
     hashtag_clicks: int = 0
     mentions: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -67,13 +65,13 @@ class KPIResult:
 
     name: str
     category: KPICategory
-    value: Union[float, int]
+    value: float | int
     unit: str
     platform: Platform
     calculation_method: str
-    benchmark: Optional[float] = None
-    performance_level: Optional[str] = None  # poor, average, good, excellent
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    benchmark: float | None = None
+    performance_level: str | None = None  # poor, average, good, excellent
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -85,9 +83,9 @@ class KPIDashboard:
     period_start: datetime
     period_end: datetime
     total_posts: int
-    kpis: List[KPIResult] = field(default_factory=list)
-    summary: Dict[str, Any] = field(default_factory=dict)
-    recommendations: List[str] = field(default_factory=list)
+    kpis: list[KPIResult] = field(default_factory=list)
+    summary: dict[str, Any] = field(default_factory=dict)
+    recommendations: list[str] = field(default_factory=list)
 
 
 class SocialKPICalculator:
@@ -168,7 +166,7 @@ class SocialKPICalculator:
             )
 
         except Exception as e:
-            self.logger.error(f"Failed to calculate engagement rate: {e}")
+            self.logger.exception(f"Failed to calculate engagement rate: {e}")
             return self._create_error_kpi(
                 "Engagement Rate", KPICategory.ENGAGEMENT, metrics.platform, str(e)
             )
@@ -202,13 +200,13 @@ class SocialKPICalculator:
             )
 
         except Exception as e:
-            self.logger.error(f"Failed to calculate reach rate: {e}")
+            self.logger.exception(f"Failed to calculate reach rate: {e}")
             return self._create_error_kpi(
                 "Reach Rate", KPICategory.REACH, metrics.platform, str(e)
             )
 
     def calculate_virality_score(
-        self, metrics: PostMetrics, account_avg_shares: Optional[float] = None
+        self, metrics: PostMetrics, account_avg_shares: float | None = None
     ) -> KPIResult:
         """
         Calculate virality score based on sharing behavior.
@@ -252,7 +250,7 @@ class SocialKPICalculator:
             )
 
         except Exception as e:
-            self.logger.error(f"Failed to calculate virality score: {e}")
+            self.logger.exception(f"Failed to calculate virality score: {e}")
             return self._create_error_kpi(
                 "Virality Score", KPICategory.VIRALITY, metrics.platform, str(e)
             )
@@ -295,14 +293,12 @@ class SocialKPICalculator:
             )
 
         except Exception as e:
-            self.logger.error(f"Failed to calculate CTR: {e}")
+            self.logger.exception(f"Failed to calculate CTR: {e}")
             return self._create_error_kpi(
                 "Click-Through Rate", KPICategory.CONVERSION, metrics.platform, str(e)
             )
 
-    def calculate_video_completion_rate(
-        self, metrics: PostMetrics
-    ) -> Optional[KPIResult]:
+    def calculate_video_completion_rate(self, metrics: PostMetrics) -> KPIResult | None:
         """
         Calculate video completion rate for video content.
 
@@ -344,7 +340,7 @@ class SocialKPICalculator:
             )
 
         except Exception as e:
-            self.logger.error(f"Failed to calculate video completion rate: {e}")
+            self.logger.exception(f"Failed to calculate video completion rate: {e}")
             return self._create_error_kpi(
                 "Video Completion Rate",
                 KPICategory.CONTENT_QUALITY,
@@ -352,7 +348,7 @@ class SocialKPICalculator:
                 str(e),
             )
 
-    def calculate_save_rate(self, metrics: PostMetrics) -> Optional[KPIResult]:
+    def calculate_save_rate(self, metrics: PostMetrics) -> KPIResult | None:
         """
         Calculate save rate (primarily for Instagram and LinkedIn).
 
@@ -390,7 +386,7 @@ class SocialKPICalculator:
             )
 
         except Exception as e:
-            self.logger.error(f"Failed to calculate save rate: {e}")
+            self.logger.exception(f"Failed to calculate save rate: {e}")
             return self._create_error_kpi(
                 "Save Rate", KPICategory.CONTENT_QUALITY, metrics.platform, str(e)
             )
@@ -429,7 +425,7 @@ class SocialKPICalculator:
             )
 
         except Exception as e:
-            self.logger.error(f"Failed to calculate growth rate: {e}")
+            self.logger.exception(f"Failed to calculate growth rate: {e}")
             return self._create_error_kpi(
                 "Daily Growth Rate", KPICategory.GROWTH, Platform.X, str(e)
             )
@@ -437,9 +433,9 @@ class SocialKPICalculator:
     def calculate_all_kpis(
         self,
         metrics: PostMetrics,
-        total_followers: Optional[int] = None,
-        account_avg_shares: Optional[float] = None,
-    ) -> List[KPIResult]:
+        total_followers: int | None = None,
+        account_avg_shares: float | None = None,
+    ) -> list[KPIResult]:
         """
         Calculate all applicable KPIs for a post.
 
@@ -480,10 +476,10 @@ class SocialKPICalculator:
         self,
         account_id: str,
         platform: Platform,
-        post_metrics: List[PostMetrics],
+        post_metrics: list[PostMetrics],
         period_start: datetime,
         period_end: datetime,
-        total_followers: Optional[int] = None,
+        total_followers: int | None = None,
     ) -> KPIDashboard:
         """
         Create a comprehensive KPI dashboard for an account.
@@ -510,7 +506,7 @@ class SocialKPICalculator:
         summary = self._calculate_summary_metrics(post_metrics, all_kpis)
         recommendations = self._generate_recommendations(summary, platform)
 
-        dashboard = KPIDashboard(
+        return KPIDashboard(
             account_id=account_id,
             platform=platform,
             period_start=period_start,
@@ -521,25 +517,22 @@ class SocialKPICalculator:
             recommendations=recommendations,
         )
 
-        return dashboard
-
-    def _assess_performance(self, value: float, benchmark: Optional[float]) -> str:
+    def _assess_performance(self, value: float, benchmark: float | None) -> str:
         """Assess performance level against benchmark."""
         if benchmark is None:
             return "unknown"
 
         if value >= benchmark * 1.5:
             return "excellent"
-        elif value >= benchmark * 1.1:
+        if value >= benchmark * 1.1:
             return "good"
-        elif value >= benchmark * 0.9:
+        if value >= benchmark * 0.9:
             return "average"
-        else:
-            return "poor"
+        return "poor"
 
     def _calculate_summary_metrics(
-        self, post_metrics: List[PostMetrics], all_kpis: List[KPIResult]
-    ) -> Dict[str, Any]:
+        self, post_metrics: list[PostMetrics], all_kpis: list[KPIResult]
+    ) -> dict[str, Any]:
         """Calculate summary metrics across all posts."""
         if not post_metrics:
             return {}
@@ -577,8 +570,8 @@ class SocialKPICalculator:
         }
 
     def _generate_recommendations(
-        self, summary: Dict[str, Any], platform: Platform
-    ) -> List[str]:
+        self, summary: dict[str, Any], platform: Platform
+    ) -> list[str]:
         """Generate actionable recommendations based on KPI performance."""
         recommendations = []
 

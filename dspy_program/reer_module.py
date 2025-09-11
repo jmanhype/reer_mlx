@@ -6,17 +6,17 @@ content discovery and context enrichment.
 """
 
 import asyncio
+from dataclasses import dataclass, field
+from datetime import datetime
+from datetime import timezone
+from enum import Enum
 import logging
 import time
-from typing import Dict, Any, List, Optional, Union, Tuple, AsyncIterator
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-import json
+from typing import Any
 
 try:
     import dspy
-    from dspy import Signature, InputField, OutputField, Module, Predict, ChainOfThought
+    from dspy import ChainOfThought, InputField, Module, OutputField, Predict, Signature
 
     DSPY_AVAILABLE = True
 except ImportError:
@@ -42,12 +42,12 @@ except ImportError:
     ChainOfThought = None
 
 try:
-    from ..core.exceptions import ValidationError, ScoringError
+    from ..core.exceptions import ScoringError, ValidationError
     from ..core.trace_store import REERTraceStore, TraceRecord
 except ImportError:
     # Fallback for standalone usage
     try:
-        from core.exceptions import ValidationError, ScoringError
+        from core.exceptions import ScoringError, ValidationError
         from core.trace_store import REERTraceStore, TraceRecord
     except ImportError:
         # Create mock classes if imports fail
@@ -91,11 +91,11 @@ class SearchContext:
     platform: str = "twitter"
     strategy: SearchStrategy = SearchStrategy.HYBRID
     max_results: int = 10
-    time_filter: Optional[str] = None  # "day", "week", "month"
+    time_filter: str | None = None  # "day", "week", "month"
     language: str = "en"
     include_metrics: bool = True
     include_sentiment: bool = True
-    filters: Dict[str, Any] = field(default_factory=dict)
+    filters: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -106,12 +106,12 @@ class SearchResult:
     content: str
     source: str
     platform: str
-    author: Optional[str] = None
-    timestamp: Optional[datetime] = None
-    engagement_metrics: Dict[str, Any] = field(default_factory=dict)
-    sentiment_score: Optional[float] = None
+    author: str | None = None
+    timestamp: datetime | None = None
+    engagement_metrics: dict[str, Any] = field(default_factory=dict)
+    sentiment_score: float | None = None
     relevance_score: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -121,14 +121,14 @@ class REERSearchResult:
     search_id: str
     query: str
     strategy: SearchStrategy
-    results: List[SearchResult]
+    results: list[SearchResult]
     total_found: int
     search_time: float
     context_summary: str = ""
-    trends_identified: List[str] = field(default_factory=list)
-    search_metadata: Dict[str, Any] = field(default_factory=dict)
+    trends_identified: list[str] = field(default_factory=list)
+    search_metadata: dict[str, Any] = field(default_factory=dict)
     success: bool = True
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 # DSPy Signatures for REER search operations
@@ -224,7 +224,7 @@ class MockREERSearchEngine:
 
     def __init__(self):
         """Initialize mock search engine."""
-        self.search_history: List[Dict[str, Any]] = []
+        self.search_history: list[dict[str, Any]] = []
 
         # Mock trending topics by platform
         self.trending_data = {
@@ -273,7 +273,7 @@ class MockREERSearchEngine:
             ],
         }
 
-    async def search(self, context: SearchContext) -> List[SearchResult]:
+    async def search(self, context: SearchContext) -> list[SearchResult]:
         """Perform mock search operation.
 
         Args:
@@ -367,7 +367,7 @@ class REERSearchModule:
     result analysis, and trend identification using DSPy modules.
     """
 
-    def __init__(self, search_engine: Optional[MockREERSearchEngine] = None):
+    def __init__(self, search_engine: MockREERSearchEngine | None = None):
         """Initialize REER search module.
 
         Args:
@@ -385,7 +385,7 @@ class REERSearchModule:
 
         # Search state
         self._initialized = False
-        self.search_cache: Dict[str, REERSearchResult] = {}
+        self.search_cache: dict[str, REERSearchResult] = {}
         self.trace_store = REERTraceStore()
 
         logger.info("Initialized REER search module")
@@ -405,7 +405,7 @@ class REERSearchModule:
             logger.info("REER search module initialized successfully")
 
         except Exception as e:
-            logger.error(f"Failed to initialize REER search module: {e}")
+            logger.exception(f"Failed to initialize REER search module: {e}")
             raise ValidationError(f"REER search initialization failed: {e}")
 
     async def search(
@@ -591,7 +591,7 @@ class REERSearchModule:
 
         except Exception as e:
             search_time = time.time() - start_time
-            logger.error(f"REER search failed: {search_id}: {e}")
+            logger.exception(f"REER search failed: {search_id}: {e}")
 
             return REERSearchResult(
                 search_id=search_id,
@@ -672,7 +672,7 @@ class REERSearchModule:
             include_sentiment=True,
         )
 
-    async def get_search_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+    async def get_search_history(self, limit: int = 10) -> list[dict[str, Any]]:
         """Get recent search history.
 
         Args:
@@ -685,7 +685,7 @@ class REERSearchModule:
             return self.search_engine.search_history[-limit:]
         return []
 
-    async def get_cached_result(self, search_id: str) -> Optional[REERSearchResult]:
+    async def get_cached_result(self, search_id: str) -> REERSearchResult | None:
         """Get cached search result.
 
         Args:
@@ -703,7 +703,7 @@ class REERSearchModule:
 
     async def analyze_search_patterns(
         self, time_window_hours: int = 24
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Analyze search patterns and trends.
 
         Args:
@@ -757,14 +757,14 @@ class REERSearchModule:
             }
 
         except Exception as e:
-            logger.error(f"Search pattern analysis failed: {e}")
+            logger.exception(f"Search pattern analysis failed: {e}")
             return {"error": str(e)}
 
     def is_available(self) -> bool:
         """Check if REER search module is available."""
         return self._initialized
 
-    async def get_module_status(self) -> Dict[str, Any]:
+    async def get_module_status(self) -> dict[str, Any]:
         """Get module status and configuration.
 
         Returns:

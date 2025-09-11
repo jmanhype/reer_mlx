@@ -7,28 +7,28 @@ London School TDD with mock-first approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-import pytest
-import json
-import asyncio
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock, MagicMock, call
-from typing import Dict, Any, List, Optional, Union
+from datetime import datetime
+from datetime import timezone
+from typing import Any
+from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
+
+import pytest
 
 # Import statements that will fail initially (RED phase)
 try:
-    from content_generation.pipeline import ContentGenerationPipeline
-    from content_generation.strategy_interpreter import StrategyInterpreter
     from content_generation.content_generator import ContentGenerator
     from content_generation.content_optimizer import ContentOptimizer
+    from content_generation.pipeline import ContentGenerationPipeline
     from content_generation.platform_adapter import PlatformAdapter
     from content_generation.quality_validator import QualityValidator
     from content_generation.schemas import (
-        GenerationRequest,
         GeneratedContent,
+        GenerationRequest,
         OptimizedContent,
     )
+    from content_generation.strategy_interpreter import StrategyInterpreter
+
     from core.exceptions import GenerationError, OptimizationError, ValidationError
 except ImportError:
     # Expected during RED phase - create mock classes for contract testing
@@ -84,7 +84,7 @@ class TestContentGenerationPipelineIntegration:
     """
 
     @pytest.fixture
-    def sample_generation_request(self) -> Dict[str, Any]:
+    def sample_generation_request(self) -> dict[str, Any]:
         """Sample content generation request."""
         return {
             "request_id": str(uuid4()),
@@ -126,7 +126,7 @@ class TestContentGenerationPipelineIntegration:
         }
 
     @pytest.fixture
-    def expected_generated_content(self) -> Dict[str, Any]:
+    def expected_generated_content(self) -> dict[str, Any]:
         """Expected generated content from the pipeline."""
         return {
             "content_id": str(uuid4()),
@@ -181,7 +181,7 @@ class TestContentGenerationPipelineIntegration:
         }
 
     @pytest.fixture
-    def sample_strategy_config(self) -> Dict[str, Any]:
+    def sample_strategy_config(self) -> dict[str, Any]:
         """Sample strategy configuration for interpretation."""
         return {
             "strategy_id": "strategy_001",
@@ -295,9 +295,9 @@ class TestContentGenerationPipelineIntegration:
     async def test_complete_content_generation_pipeline(
         self,
         mock_generation_pipeline: Mock,
-        sample_generation_request: Dict[str, Any],
-        sample_strategy_config: Dict[str, Any],
-        expected_generated_content: Dict[str, Any],
+        sample_generation_request: dict[str, Any],
+        sample_strategy_config: dict[str, Any],
+        expected_generated_content: dict[str, Any],
     ):
         """Test complete content generation pipeline: interpret → generate → optimize → adapt → validate."""
         # Arrange
@@ -344,8 +344,8 @@ class TestContentGenerationPipelineIntegration:
     async def test_strategy_interpretation_and_parameter_extraction(
         self,
         mock_strategy_interpreter: Mock,
-        sample_strategy_config: Dict[str, Any],
-        sample_generation_request: Dict[str, Any],
+        sample_strategy_config: dict[str, Any],
+        sample_generation_request: dict[str, Any],
     ):
         """Test strategy interpretation and generation parameter extraction."""
         # Arrange
@@ -400,7 +400,7 @@ class TestContentGenerationPipelineIntegration:
         assert parameters["constraints"]["max_characters"] == 280
 
     async def test_multi_provider_content_generation(
-        self, mock_content_generator: Mock, sample_generation_request: Dict[str, Any]
+        self, mock_content_generator: Mock, sample_generation_request: dict[str, Any]
     ):
         """Test content generation with multiple providers (MLX, DSPy)."""
         # Arrange
@@ -446,7 +446,7 @@ class TestContentGenerationPipelineIntegration:
         assert best_content["provider"] == "dspy::llama-3.2-3b"
 
     async def test_content_optimization_and_enhancement(
-        self, mock_content_optimizer: Mock, expected_generated_content: Dict[str, Any]
+        self, mock_content_optimizer: Mock, expected_generated_content: dict[str, Any]
     ):
         """Test content optimization and enhancement processes."""
         # Arrange
@@ -514,7 +514,7 @@ class TestContentGenerationPipelineIntegration:
         assert final_result["quality_score"] > 0.85
 
     async def test_multi_platform_adaptation(
-        self, mock_platform_adapter: Mock, expected_generated_content: Dict[str, Any]
+        self, mock_platform_adapter: Mock, expected_generated_content: dict[str, Any]
     ):
         """Test adaptation of content for multiple social media platforms."""
         # Arrange
@@ -568,7 +568,7 @@ class TestContentGenerationPipelineIntegration:
     # Quality Validation and Compliance Tests
 
     async def test_comprehensive_quality_validation(
-        self, mock_quality_validator: Mock, expected_generated_content: Dict[str, Any]
+        self, mock_quality_validator: Mock, expected_generated_content: dict[str, Any]
     ):
         """Test comprehensive quality validation and compliance checking."""
         # Arrange
@@ -695,7 +695,7 @@ class TestContentGenerationPipelineIntegration:
     # Performance and Error Handling Tests
 
     async def test_concurrent_content_generation(
-        self, mock_generation_pipeline: Mock, sample_generation_request: Dict[str, Any]
+        self, mock_generation_pipeline: Mock, sample_generation_request: dict[str, Any]
     ):
         """Test concurrent content generation for multiple requests."""
         # Arrange
@@ -730,7 +730,7 @@ class TestContentGenerationPipelineIntegration:
         assert result["throughput_requests_per_second"] > 2.0
 
     async def test_generation_error_handling_and_fallbacks(
-        self, mock_content_generator: Mock, sample_generation_request: Dict[str, Any]
+        self, mock_content_generator: Mock, sample_generation_request: dict[str, Any]
     ):
         """Test error handling and fallback mechanisms in generation."""
         # Arrange
@@ -768,14 +768,10 @@ class TestContentGenerationPipelineIntegration:
         self,
         mock_generation_pipeline: Mock,
         mock_quality_validator: Mock,
-        sample_generation_request: Dict[str, Any],
+        sample_generation_request: dict[str, Any],
     ):
         """Test enforcement of quality thresholds with regeneration."""
         # Arrange
-        low_quality_content = {
-            "text": "Basic AI tip about data",
-            "quality_score": 0.65,  # Below threshold of 0.8
-        }
 
         high_quality_content = {
             "text": "🚀 Essential AI development tip: Always validate your training data before fine-tuning. Poor data quality = poor model performance. What's your go-to data validation strategy?",
@@ -808,17 +804,10 @@ class TestContentGenerationPipelineIntegration:
         assert result["final_validation"] == "passed"
 
     async def test_caching_and_performance_optimization(
-        self, mock_generation_pipeline: Mock, sample_generation_request: Dict[str, Any]
+        self, mock_generation_pipeline: Mock, sample_generation_request: dict[str, Any]
     ):
         """Test caching mechanisms and performance optimization."""
         # Arrange
-        cache_performance = {
-            "cache_hit_rate": 0.75,
-            "avg_cache_response_time_ms": 45,
-            "avg_generation_time_ms": 1200,
-            "cache_size_mb": 128,
-            "cache_efficiency": 0.82,
-        }
 
         cached_result = {
             "content": "Cached high-quality content",
@@ -843,7 +832,7 @@ class TestContentGenerationPipelineIntegration:
     # Advanced Features and Integration Tests
 
     async def test_a_b_testing_content_variations(
-        self, mock_content_generator: Mock, sample_generation_request: Dict[str, Any]
+        self, mock_content_generator: Mock, sample_generation_request: dict[str, Any]
     ):
         """Test generation of A/B testing content variations."""
         # Arrange
@@ -890,7 +879,7 @@ class TestContentGenerationPipelineIntegration:
         assert all(var["predicted_engagement"] > 0.7 for var in result["variations"])
 
     async def test_real_time_trend_integration(
-        self, mock_strategy_interpreter: Mock, sample_generation_request: Dict[str, Any]
+        self, mock_strategy_interpreter: Mock, sample_generation_request: dict[str, Any]
     ):
         """Test integration with real-time trending topics and optimization."""
         # Arrange
