@@ -1,0 +1,10 @@
+# Social media platform dependencies
+-r requirements.txt
+
+# Social media APIs
+tweepy>=4.14.0
+facebook-sdk>=3.1.0
+instagram-basic-display-api>=1.0.0
+linkedin-api>=2.0.0
+discord.py>=2.3.0
+slack-sdk>=3.26.0

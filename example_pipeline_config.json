@@ -1,0 +1,30 @@
+{
+  "platforms": ["x", "instagram"],
+  "collection": {
+    "limit": 100,
+    "days_back": 7,
+    "hashtags": ["ai", "machinelearning", "tech"],
+    "keywords": ["artificial intelligence", "ML", "technology"]
+  },
+  "mining": {
+    "algorithm": "reer",
+    "batch_size": 50,
+    "min_engagement": 10,
+    "extract_patterns": true,
+    "synthesize_strategies": true,
+    "score_candidates": true
+  },
+  "tuning": {
+    "population_size": 50,
+    "generations": 100,
+    "mutation_rate": 0.1,
+    "crossover_rate": 0.7,
+    "elite_size": 5,
+    "fitness_metric": "combined"
+  },
+  "generation": {
+    "content_count": 20,
+    "content_types": ["post", "thread"],
+    "optimization_level": "high"
+  }
+}

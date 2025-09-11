@@ -1,0 +1,24 @@
+{
+  "id": "not-a-valid-uuid",
+  "timestamp": "2024-13-45",
+  "source_post_id": "",
+  "seed_params": {
+    "topic": "AI development",
+    "style": "technical",
+    "length": "280",
+    "thread_size": 0
+  },
+  "score": 1.5,
+  "metrics": {
+    "impressions": -100,
+    "engagement_rate": 150.0,
+    "retweets": "fifteen",
+    "likes": 55
+  },
+  "strategy_features": [],
+  "provider": "invalid-provider",
+  "metadata": {
+    "extraction_method": "reer_v1.0"
+  },
+  "extra_field": "not allowed"
+}

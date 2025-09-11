@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reer-dspy-mlx/schemas/traces.schema.json",
+  "title": "REER Trace",
+  "description": "Append-only record capturing strategy extraction events from historical posts",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "id",
+    "timestamp",
+    "source_post_id",
+    "seed_params",
+    "score",
+    "metrics",
+    "strategy_features",
+    "provider",
+    "metadata"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique trace identifier (UUID v4)"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When trace was created (ISO 8601)"
+    },
+    "source_post_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Original post identifier from X"
+    },
+    "seed_params": {
+      "type": "object",
+      "description": "Parameters that generated this strategy",
+      "required": ["topic", "style", "length", "thread_size"],
+      "properties": {
+        "topic": {
+          "type": "string",
+          "description": "Content topic/theme"
+        },
+        "style": {
+          "type": "string",
+          "description": "Writing style detected"
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Character count"
+        },
+        "thread_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 25,
+          "description": "Number of posts if thread"
+        }
+      }
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Performance score (0.0-1.0)"
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Performance metrics",
+      "required": ["impressions", "engagement_rate", "retweets", "likes"],
+      "properties": {
+        "impressions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "View count"
+        },
+        "engagement_rate": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "Engagement percentage"
+        },
+        "retweets": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Share count"
+        },
+        "likes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Like count"
+        }
+      }
+    },
+    "strategy_features": {
+      "type": "array",
+      "description": "Extracted strategy patterns",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "provider": {
+      "type": "string",
+      "pattern": "^(mlx|dspy)::.+$",
+      "description": "LM provider used for extraction"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional context",
+      "required": ["extraction_method", "confidence"],
+      "properties": {
+        "extraction_method": {
+          "type": "string",
+          "description": "REER method version"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Extraction confidence"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

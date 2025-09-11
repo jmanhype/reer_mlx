@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reer-dspy-mlx/schemas/timeline.schema.json",
+  "title": "Timeline Entry",
+  "description": "Scheduled post with publication metadata",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "id",
+    "topic",
+    "scheduled_time",
+    "candidate_id",
+    "drafts",
+    "publication_status"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique timeline identifier (UUID v4)"
+    },
+    "topic": {
+      "type": "string",
+      "description": "Content topic/campaign"
+    },
+    "scheduled_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Publication time (ISO 8601)"
+    },
+    "candidate_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Associated post candidate"
+    },
+    "drafts": {
+      "type": "array",
+      "description": "Alternative versions",
+      "items": {
+        "type": "object",
+        "required": ["candidate_id", "score", "selected"],
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Alternative candidate"
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Relative score"
+          },
+          "selected": {
+            "type": "boolean",
+            "description": "Chosen for publication"
+          }
+        }
+      }
+    },
+    "publication_status": {
+      "type": "string",
+      "enum": ["pending", "published", "failed"],
+      "description": "Publication status"
+    },
+    "actual_publish_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When actually published"
+    },
+    "performance": {
+      "type": "object",
+      "description": "Actual performance (post-publication)",
+      "properties": {
+        "impressions": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "24hr impressions"
+        },
+        "engagement_rate": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "24hr engagement"
+        },
+        "click_through_rate": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "Link CTR"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

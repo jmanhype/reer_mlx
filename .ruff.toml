@@ -1,0 +1,57 @@
+# Ruff configuration file
+target-version = "py311"
+line-length = 88
+respect-gitignore = true
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "N",    # pep8-naming
+    "S",    # flake8-bandit
+    "T20",  # flake8-print
+    "PT",   # flake8-pytest-style
+    "RET",  # flake8-return
+    "SIM",  # flake8-simplify
+    "ARG",  # flake8-unused-arguments
+    "ERA",  # eradicate
+    "PL",   # pylint
+    "TRY",  # tryceratops
+]
+
+ignore = [
+    "E501",   # line too long, handled by black
+    "B008",   # do not perform function calls in argument defaults
+    "C901",   # too complex
+    "S101",   # use of assert detected
+    "PLR0913", # too many arguments
+    "PLR0915", # too many statements
+    "TRY003", # avoid specifying long messages outside the exception class
+]
+
+[lint.per-file-ignores]
+"__init__.py" = ["F401", "E402"]
+"tests/**/*.py" = ["B011", "S101", "ARG001", "PLR0913"]
+"scripts/**/*.py" = ["T20"]
+
+[lint.isort]
+known-first-party = ["core", "plugins", "dspy_program", "social", "schemas", "tools"]
+force-sort-within-sections = true
+split-on-trailing-comma = true
+
+[lint.pylint]
+max-args = 8
+max-branches = 15
+max-returns = 10
+max-statements = 60
+
+[format]
+quote-style = "double"
+indent-style = "space"
+# skip-source-first-line = false
+line-ending = "auto"

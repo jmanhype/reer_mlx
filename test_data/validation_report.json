@@ -1,0 +1,231 @@
+{
+  "timestamp": "2025-09-11T03:36:13.608981+00:00",
+  "total_files": 1,
+  "total_records": 3,
+  "valid_files": 1,
+  "invalid_files": 0,
+  "files_with_warnings": 1,
+  "schema_coverage": {
+    "traces": 1
+  },
+  "error_summary": {
+    "minLength": 1,
+    "minimum": 2,
+    "maximum": 3,
+    "type": 1,
+    "minItems": 1,
+    "pattern": 1
+  },
+  "results": [
+    {
+      "file_path": "test_data/sample_traces.jsonl",
+      "schema_name": "traces",
+      "is_valid": true,
+      "errors": [],
+      "warnings": [],
+      "line_number": 1,
+      "record_index": 0,
+      "validation_time": 0.000218
+    },
+    {
+      "file_path": "test_data/sample_traces.jsonl",
+      "schema_name": "traces",
+      "is_valid": true,
+      "errors": [],
+      "warnings": [],
+      "line_number": 2,
+      "record_index": 1,
+      "validation_time": 0.00015
+    },
+    {
+      "file_path": "test_data/sample_traces.jsonl",
+      "schema_name": "traces",
+      "is_valid": false,
+      "errors": [
+        {
+          "message": "'' should be non-empty",
+          "path": [
+            "source_post_id"
+          ],
+          "schema_path": [
+            "properties",
+            "source_post_id",
+            "minLength"
+          ],
+          "invalid_value": "",
+          "validator": "minLength",
+          "validator_value": 1
+        },
+        {
+          "message": "-1 is less than the minimum of 1",
+          "path": [
+            "seed_params",
+            "length"
+          ],
+          "schema_path": [
+            "properties",
+            "seed_params",
+            "properties",
+            "length",
+            "minimum"
+          ],
+          "invalid_value": -1,
+          "validator": "minimum",
+          "validator_value": 1
+        },
+        {
+          "message": "100 is greater than the maximum of 25",
+          "path": [
+            "seed_params",
+            "thread_size"
+          ],
+          "schema_path": [
+            "properties",
+            "seed_params",
+            "properties",
+            "thread_size",
+            "maximum"
+          ],
+          "invalid_value": 100,
+          "validator": "maximum",
+          "validator_value": 25
+        },
+        {
+          "message": "2.0 is greater than the maximum of 1.0",
+          "path": [
+            "score"
+          ],
+          "schema_path": [
+            "properties",
+            "score",
+            "maximum"
+          ],
+          "invalid_value": 2.0,
+          "validator": "maximum",
+          "validator_value": 1.0
+        },
+        {
+          "message": "'many' is not of type 'integer'",
+          "path": [
+            "metrics",
+            "impressions"
+          ],
+          "schema_path": [
+            "properties",
+            "metrics",
+            "properties",
+            "impressions",
+            "type"
+          ],
+          "invalid_value": "many",
+          "validator": "type",
+          "validator_value": "integer"
+        },
+        {
+          "message": "-5 is less than the minimum of 0.0",
+          "path": [
+            "metrics",
+            "engagement_rate"
+          ],
+          "schema_path": [
+            "properties",
+            "metrics",
+            "properties",
+            "engagement_rate",
+            "minimum"
+          ],
+          "invalid_value": -5,
+          "validator": "minimum",
+          "validator_value": 0.0
+        },
+        {
+          "message": "[] should be non-empty",
+          "path": [
+            "strategy_features"
+          ],
+          "schema_path": [
+            "properties",
+            "strategy_features",
+            "minItems"
+          ],
+          "invalid_value": [],
+          "validator": "minItems",
+          "validator_value": 1
+        },
+        {
+          "message": "'bad::provider' does not match '^(mlx|dspy)::.+$'",
+          "path": [
+            "provider"
+          ],
+          "schema_path": [
+            "properties",
+            "provider",
+            "pattern"
+          ],
+          "invalid_value": "bad::provider",
+          "validator": "pattern",
+          "validator_value": "^(mlx|dspy)::.+$"
+        },
+        {
+          "message": "2.0 is greater than the maximum of 1.0",
+          "path": [
+            "metadata",
+            "confidence"
+          ],
+          "schema_path": [
+            "properties",
+            "metadata",
+            "properties",
+            "confidence",
+            "maximum"
+          ],
+          "invalid_value": 2.0,
+          "validator": "maximum",
+          "validator_value": 1.0
+        }
+      ],
+      "warnings": [
+        {
+          "message": "'invalid-uuid' is not a 'uuid'",
+          "path": [
+            "id"
+          ],
+          "schema_path": [
+            "properties",
+            "id",
+            "format"
+          ],
+          "invalid_value": "invalid-uuid",
+          "validator": "format",
+          "validator_value": "uuid"
+        },
+        {
+          "message": "'bad-date' is not a 'date-time'",
+          "path": [
+            "timestamp"
+          ],
+          "schema_path": [
+            "properties",
+            "timestamp",
+            "format"
+          ],
+          "invalid_value": "bad-date",
+          "validator": "format",
+          "validator_value": "date-time"
+        },
+        {
+          "message": "Very low engagement rate: -5%",
+          "path": [
+            "metrics",
+            "engagement_rate"
+          ],
+          "type": "performance_warning"
+        }
+      ],
+      "line_number": 3,
+      "record_index": 2,
+      "validation_time": 0.00074
+    }
+  ],
+  "auto_fixes_applied": []
+}
