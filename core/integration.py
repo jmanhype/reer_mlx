@@ -26,6 +26,8 @@ from .exceptions import (
     TraceStoreError,
 )
 from .trace_store import REERTraceStore
+from reer.trajectory_search import TrajectorySearch, TrajectorySearchConfig
+from tools.ppl_eval import select_ppl_evaluator
 
 # ============================================================================
 # Rate Limiting and Backoff
@@ -300,6 +302,46 @@ class IntegratedREERMiner:
             "total_storage_operations": 0,
             "rate_limit_hits": 0,
         }
+
+    async def synthesize_trajectory(
+        self,
+        x: str,
+        y: str,
+        output_jsonl: Path,
+        *,
+        auto: str = "light",
+        backend: str = "mlx",
+        model: str | None = None,
+    ) -> dict[str, Any]:
+        """Run local-search REER synthesis for a single (x,y) and append to JSONL.
+
+        Args:
+            x: Query/prompt text
+            y: Reference answer/output text
+            output_jsonl: Path to output JSONL file
+            auto: Budget preset (light|medium|heavy)
+            mlx_model: Optional MLX model name for real PPL; proxy if None
+
+        Returns: Result dict with z segments and ppl stats
+        """
+        if auto == "light":
+            cfg = TrajectorySearchConfig(max_iters=6, max_candidates_per_segment=3)
+        elif auto == "medium":
+            cfg = TrajectorySearchConfig(max_iters=10, max_candidates_per_segment=4)
+        else:
+            cfg = TrajectorySearchConfig(max_iters=14, max_candidates_per_segment=5)
+
+        if not model:
+            raise ValueError("model must be provided for backend 'mlx' or 'together'")
+        ppl = select_ppl_evaluator(backend, model)
+        search = TrajectorySearch(ppl, cfg)
+        result = search.search(x, y)
+
+        output_jsonl.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_jsonl, "a") as f:
+            f.write(json.dumps(result) + "\n")
+
+        return result
 
     async def extract_and_store(
         self,

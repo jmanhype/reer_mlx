@@ -8,7 +8,6 @@ __description__ = "Core functionality for social posting with DSPy and MLX"
 from .candidate_scorer import ContentCandidate, REERCandidateScorer, ScoringMetrics
 from .exceptions import *
 from .trace_store import REERTraceStore, TraceRecord
-from .trainer import Individual, OptimizationResult, Population, REERGEPATrainer
 from .trajectory_synthesizer import (
     REERTrajectorySynthesizer,
     StrategyPattern,
@@ -45,9 +44,15 @@ __all__ = [
     "REERCandidateScorer",
     "ContentCandidate",
     "ScoringMetrics",
-    # GEPA Trainer
-    "REERGEPATrainer",
-    "OptimizationResult",
-    "Individual",
-    "Population",
 ]
+
+
+# GEPA trainer compatibility shim (deprecated)
+class REERGEPATrainer:  # pragma: no cover - import-time shim
+    def __init__(self, *_, **__):
+        raise ImportError(
+            "REERGEPATrainer has been removed. Use dspy_program.gepa_runner.run_gepa instead."
+        )
+
+
+# Backwards-compat names removed: Individual, Population, OptimizationResult

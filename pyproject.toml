@@ -69,6 +69,10 @@ cloud = [
     "google-cloud-storage>=2.14.0",
     "azure-storage-blob>=12.19.0",
 ]
+gepa = [
+    "dspy-ai>=3.0.0",
+    "gepa>=0.1.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/reer-team/reer-dspy-mlx-social"

@@ -251,7 +251,7 @@ async def _execute_pipeline(
                     str(e),
                 )
 
-        # Stage 3: GEPA Tuning
+        # Stage 3: GEPA Tuning (DSPy)
         if "tune" in stages:
             stage_start = time.time()
             pipeline_table.add_row("GEPA Tuning", "🔄 Running", "", "")
@@ -269,7 +269,7 @@ async def _execute_pipeline(
                     "GEPA Tuning",
                     "✅ Complete",
                     f"{stage_duration:.1f}s",
-                    f"Fitness: {tune_result.get('best_fitness', 0):.3f}",
+                    f"Best Val: {tune_result.get('best_val_score', 0):.3f}",
                 )
 
             except Exception as e:
@@ -401,28 +401,28 @@ async def _run_tuning_stage(
 ) -> dict[str, Any]:
     """Run GEPA tuning stage."""
 
-    # Mock GEPA tuning
+    # Mock GEPA (DSPy) tuning
     await asyncio.sleep(4)  # Simulate tuning time
 
-    result = {
-        "best_fitness": 0.847,
-        "generations": 75,
-        "converged": True,
-        "model_file": "best_model.pkl",
+    # Produce an optimized_program.json artifact similar to the CLI output
+    model_file = output_dir / "optimized_program.json"
+    mock_program = {
+        "predictors": {
+            "compose": "Compose a concise, high-engagement post for the given topic and audience."
+        },
+        "detailed_results": {
+            "val_aggregate_scores": [0.72, 0.81, 0.78],
+            "candidates": [{"compose": "..."}, {"compose": "..."}],
+        },
     }
-
-    # Save mock model
-    model_file = output_dir / "best_model.pkl"
-    model_data = {
-        "fitness": result["best_fitness"],
-        "generations": result["generations"],
-        "parameters": {"mutation_rate": 0.1, "crossover_rate": 0.7},
-    }
-
     with open(model_file, "w") as f:
-        json.dump(model_data, f, indent=2)
+        json.dump(mock_program, f, indent=2)
 
-    return result
+    return {
+        "best_val_score": 0.81,
+        "model_file": str(model_file),
+        "converged": True,
+    }
 
 
 async def _run_generation_stage(
@@ -502,7 +502,7 @@ async def _save_pipeline_results(results: dict[str, Any], output_dir: Path):
             }
         elif stage == "tune":
             summary["stage_summaries"][stage] = {
-                "best_fitness": stage_result.get("best_fitness", 0),
+                "best_val_score": stage_result.get("best_val_score", 0),
                 "converged": stage_result.get("converged", False),
             }
         elif stage == "generate":
@@ -551,12 +551,15 @@ def _display_pipeline_config(
         )
 
     if "tuning" in config:
-        config_table.add_row(
-            "Population Size", str(config["tuning"].get("population_size", 50))
-        )
-        config_table.add_row(
-            "Generations", str(config["tuning"].get("generations", 100))
-        )
+        tune = config["tuning"]
+        if tune.get("engine"):
+            config_table.add_row("Tuning Engine", tune.get("engine"))
+        if tune.get("auto"):
+            config_table.add_row("GEPA Auto", tune.get("auto"))
+        if tune.get("reflection_model"):
+            config_table.add_row("Reflection Model", tune.get("reflection_model"))
+        if tune.get("gen_model"):
+            config_table.add_row("Gen Model", tune.get("gen_model"))
 
     console.print(config_table)
     console.print()
@@ -602,7 +605,7 @@ def _display_pipeline_results(results: dict[str, Any]):
 
             elif stage == "tune":
                 stage_branch.add(
-                    f"Best Fitness: {stage_result.get('best_fitness', 0):.3f}"
+                    f"Best Val: {stage_result.get('best_val_score', 0):.3f}"
                 )
                 stage_branch.add(f"Converged: {stage_result.get('converged', False)}")
 

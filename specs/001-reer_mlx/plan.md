@@ -160,14 +160,14 @@ data/
    - DSPy best practices for pipeline composition
    - MLX token-level logprobs extraction methods
    - Perplexity score normalization across providers
-   - GEPA optimizer configuration for social content
+   - DSPy GEPA configuration for social content (budget, reflection LM)
 
 2. **Generate and dispatch research agents**:
    ```
    Task: "Research DSPy pipeline patterns for content generation"
    Task: "Find MLX logprobs extraction methods for perplexity scoring"
    Task: "Research logprob normalization across Together/OpenAI/Anthropic"
-   Task: "Find GEPA optimization strategies for social media content"
+   Task: "Find DSPy GEPA optimization strategies for social media content"
    ```
 
 3. **Consolidate findings** in `research.md` using format:

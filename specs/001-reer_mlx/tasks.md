@@ -69,7 +69,7 @@
 - [ ] T014 [P] REER trace store (append-only JSONL) in core/trace_store.py
 - [ ] T015 [P] Trajectory synthesizer for strategy extraction in core/trajectory_synthesizer.py
 - [ ] T016 [P] Candidate scorer with perplexity calculation in core/candidate_scorer.py
-- [ ] T017 [P] GEPA trainer for optimization in core/trainer.py
+- [ ] T017 [P] DSPy GEPA runner in dspy_program/gepa_runner.py
 
 ### Plugin Modules (Provider Adapters)
 
@@ -95,7 +95,7 @@
 
 - [ ] T029 Data collection CLI in scripts/social_collect.py
 - [ ] T030 REER mining CLI in scripts/social_reer.py
-- [ ] T031 GEPA tuning CLI in scripts/social_gepa.py
+- [ ] T031 GEPA tuning CLI in scripts/social_gepa.py (DSPy GEPA)
 - [ ] T032 Pipeline execution CLI in scripts/social_run.py
 - [ ] T033 Evaluation CLI in scripts/social_eval.py
 - [ ] T034 MLX model management CLI in scripts/cli_mlx.py
@@ -154,7 +154,7 @@ Task: "Integration test for X analytics import in tests/integration/test_data_co
 Task: "Integration test for REER strategy extraction in tests/integration/test_reer_mining.py"
 Task: "Integration test for content generation pipeline in tests/integration/test_pipeline.py"
 Task: "Integration test for provider switching in tests/integration/test_provider_switching.py"
-Task: "Integration test for GEPA optimization in tests/integration/test_gepa_tuning.py"
+Task: "Integration test for DSPy GEPA optimization in tests/integration/test_gepa_tuning.py"
 ```
 
 ### Batch 3: Core Modules
@@ -164,7 +164,7 @@ Task: "Integration test for GEPA optimization in tests/integration/test_gepa_tun
 Task: "REER trace store in core/trace_store.py"
 Task: "Trajectory synthesizer in core/trajectory_synthesizer.py"
 Task: "Candidate scorer in core/candidate_scorer.py"
-Task: "GEPA trainer in core/trainer.py"
+Task: "DSPy GEPA runner in dspy_program/gepa_runner.py"
 ```
 
 ### Batch 4: Plugin Modules

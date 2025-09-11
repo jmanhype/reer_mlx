@@ -52,7 +52,9 @@ try:
         ScoringMetrics,
     )
     from ..core.exceptions import OptimizationError, ScoringError, ValidationError
-    from ..core.trainer import OptimizationConfig, OptimizationResult, REERGEPATrainer
+
+    # GEPA moved to DSPy; use runner
+    from .gepa_runner import run_gepa
     from ..plugins.dspy_lm import DSPyConfig, DSPyLanguageModelAdapter
 except ImportError:
     # Fallback for standalone usage
@@ -63,7 +65,7 @@ except ImportError:
             ScoringMetrics,
         )
         from core.exceptions import OptimizationError, ScoringError, ValidationError
-        from core.trainer import OptimizationConfig, OptimizationResult, REERGEPATrainer
+        from dspy_program.gepa_runner import run_gepa
         from plugins.dspy_lm import DSPyConfig, DSPyLanguageModelAdapter
     except ImportError:
         # Create mock classes if imports fail
@@ -97,26 +99,7 @@ except ImportError:
             async def score_candidate(self, candidate):
                 return ScoringMetrics()
 
-        class OptimizationConfig:
-            def __init__(self, **kwargs):
-                for k, v in kwargs.items():
-                    setattr(self, k, v)
-
-        class OptimizationResult:
-            def __init__(self, **kwargs):
-                self.success = False
-                for k, v in kwargs.items():
-                    setattr(self, k, v)
-
-        class REERGEPATrainer:
-            def __init__(self, scorer, config):
-                self.scorer = scorer
-                self.config = config
-
-            async def optimize(self, target):
-                return OptimizationResult(
-                    success=False, error_message="Mock implementation"
-                )
+        run_gepa = None  # GEPA not available in fallback
 
         class DSPyConfig:
             def __init__(self, **kwargs):
@@ -162,9 +145,11 @@ class PipelineConfig:
     diversity_requirement: float = 0.6
     batch_size: int = 10
 
-    # Optimization settings
+    # Optimization settings (DSPy GEPA)
     use_optimization: bool = True
-    optimization_config: OptimizationConfig | None = None
+    gepa_auto: str = "light"  # light|medium|heavy
+    gepa_reflection_model: str = "gpt-4o"
+    gepa_use_perplexity: bool = False
 
     # Search configuration
     enable_reer_search: bool = True
@@ -209,7 +194,7 @@ class ContentResult:
     metadata: dict[str, Any]
     scores: ScoringMetrics
     search_results: REERSearchResult | None = None
-    optimization_result: OptimizationResult | None = None
+    optimization_result: Any | None = None
     performance_metrics: PerformanceMetrics | None = None
     generation_time: float = 0.0
     success: bool = True
@@ -311,12 +296,8 @@ class REERDSPyPipeline:
         # Initialize scorer
         self.scorer = REERCandidateScorer()
 
-        # Initialize GEPA trainer if optimization is enabled
-        if config.use_optimization:
-            opt_config = config.optimization_config or OptimizationConfig()
-            self.gepa_trainer = REERGEPATrainer(self.scorer, opt_config)
-        else:
-            self.gepa_trainer = None
+        # GEPA is available via DSPy runner; flag only
+        self.gepa_enabled = bool(config.use_optimization)
 
         # Initialize KPI evaluator
         if config.enable_kpi_evaluation:
@@ -592,8 +573,8 @@ class REERDSPyPipeline:
         self,
         optimization_target: dict[str, Any],
         content_requests: list[ContentRequest] | None = None,
-    ) -> OptimizationResult:
-        """Optimize content generation using GEPA trainer.
+    ) -> Any:
+        """Optimize content generation using DSPy GEPA.
 
         Args:
             optimization_target: Optimization target parameters
@@ -602,7 +583,7 @@ class REERDSPyPipeline:
         Returns:
             GEPA optimization result
         """
-        if not self.gepa_trainer:
+        if not self.gepa_enabled:
             raise ValidationError("GEPA optimization not enabled")
 
         logger.info("Starting GEPA optimization")
@@ -610,15 +591,38 @@ class REERDSPyPipeline:
         try:
             await self.initialize()
 
-            # Run GEPA optimization
-            result = await self.gepa_trainer.optimize(optimization_target)
+            # Build train tasks from content requests or target
+            if content_requests:
+                train = [
+                    {"topic": r.topic, "audience": r.audience} for r in content_requests
+                ]
+            else:
+                train = [
+                    {
+                        "topic": optimization_target.get("topic", ""),
+                        "audience": optimization_target.get("audience", "general"),
+                    }
+                ]
 
-            logger.info(
-                f"GEPA optimization completed: success={result.success}, "
-                f"fitness={result.best_individual.overall_fitness:.3f}"
+            # Choose gen model from adapter config if available
+            gen_model = None
+            if hasattr(self.config.dspy_config, "model"):
+                gen_model = getattr(self.config.dspy_config, "model")
+
+            optimized_program = run_gepa(
+                train,
+                val_tasks=None,
+                gen_model=gen_model or "mlx-community/Llama-3.2-3B-Instruct-4bit",
+                reflection_model=self.config.gepa_reflection_model,
+                auto=self.config.gepa_auto,
+                track_stats=True,
+                use_cot=True,
+                use_perplexity=self.config.gepa_use_perplexity,
             )
 
-            return result
+            logger.info("GEPA optimization (DSPy) completed")
+
+            return optimized_program
 
         except Exception as e:
             logger.exception(f"GEPA optimization failed: {e}")
@@ -850,7 +854,7 @@ class REERDSPyPipeline:
                     else None
                 ),
                 "reer_search": bool(self.reer_search),
-                "gepa_trainer": bool(self.gepa_trainer),
+                "gepa_enabled": bool(self.gepa_enabled),
                 "kpi_evaluator": bool(self.kpi_evaluator),
             },
             "execution_history_count": len(self.execution_history),
@@ -924,7 +928,6 @@ class PipelineFactory:
     def create_optimization_pipeline(
         provider: str = "openai",
         model: str = "gpt-3.5-turbo",
-        optimization_config: OptimizationConfig | None = None,
         **kwargs,
     ) -> REERDSPyPipeline:
         """Create a pipeline optimized for GEPA training.
@@ -946,7 +949,6 @@ class PipelineFactory:
             dspy_config=dspy_config,
             enable_reer_search=True,
             use_optimization=True,
-            optimization_config=optimization_config,
             enable_kpi_evaluation=True,
             max_iterations=3,
             quality_threshold=0.9,

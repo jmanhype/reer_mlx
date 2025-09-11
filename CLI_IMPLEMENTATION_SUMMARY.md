@@ -36,7 +36,7 @@ All six CLI scripts have been successfully implemented and are functional:
 ### T031: GEPA Tuning CLI (`scripts/social_gepa.py`)
 - **Status**: ✅ **COMPLETE**
 - **Features**:
-  - Genetic Evolution with Pattern Adaptation
+  - DSPy GEPA (reflective prompt evolution)
   - DSPy program optimization
   - Population-based evolutionary algorithms
   - Checkpoint saving and resuming
@@ -213,7 +213,7 @@ All CLI scripts are ready for production use and provide a comprehensive command
 
 - Collect social media data from multiple platforms
 - Process data using REER methodology
-- Optimize DSPy programs with genetic algorithms
+- Optimize DSPy programs with DSPy GEPA (no GA)
 - Execute complete content generation pipelines
 - Evaluate and benchmark content quality
 - Manage MLX models on Apple Silicon

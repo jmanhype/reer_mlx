@@ -96,11 +96,11 @@ perplexity = torch.exp(loss).item()
 
 ### 4. GEPA Optimization for Social Content
 
-**Decision**: Use DSPy's BootstrapFewShot with custom social media metrics
+**Decision**: Use DSPy GEPA (dspy.teleprompt.gepa.GEPA) with repo scorer feedback
 **Rationale**:
-- GEPA (Generate, Evaluate, Prune, Append) maps well to BootstrapFewShot
-- Custom metrics for impressions, engagement, virality
-- Traces provide supervision signal
+- GEPA performs reflective instruction evolution driven by metric feedback
+- Leverages our `REERCandidateScorer` to provide actionable textual feedback
+- Trace-derived supervision remains compatible with GEPA’s feedback loop
 
 **Alternatives Considered**:
 - Manual prompt engineering: Not scalable
@@ -109,15 +109,12 @@ perplexity = torch.exp(loss).item()
 
 **Optimization Strategy**:
 ```python
-def social_metric(example, prediction, trace=None):
-    """Custom metric for social content optimization"""
-    score = 0.0
-    
-    # Length optimization (threads vs single posts)
-    if len(prediction.post) < 280:
-        score += 0.2
-    
-    # Engagement patterns from traces
+def social_metric(example, prediction, trace=None, pred_name=None, pred_trace=None):
+    """GEPA metric returning score and textual feedback."""
+    from core import REERCandidateScorer, ContentCandidate
+    scorer = REERCandidateScorer()
+    m = asyncio.run(scorer.score_candidate(ContentCandidate("tmp", prediction.post)))
+    return {"score": m.overall_score, "feedback": f"Score {m.overall_score:.3f}"}
     if trace and matches_high_performing_pattern(prediction.post, trace):
         score += 0.5
     

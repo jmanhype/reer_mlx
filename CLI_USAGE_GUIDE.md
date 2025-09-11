@@ -114,52 +114,26 @@ python scripts/social_reer.py traces --action export
 ## 3. GEPA Tuning (`social_gepa.py`)
 
 ### Purpose
-Optimize DSPy programs using Genetic Evolution with Pattern Adaptation.
+Reflective prompt evolution using DSPy GEPA (no GA). GEPA edits predictor instructions guided by our scorer.
 
 ### Basic Usage
 ```bash
-# Basic GEPA tuning
-python scripts/social_gepa.py tune my_program.py training_data.json
-
-# Tuning with custom parameters
-python scripts/social_gepa.py tune program.py data.json \
-  --population-size 100 \
-  --generations 200 \
-  --mutation-rate 0.15 \
-  --crossover-rate 0.8
+# Trainset: JSON list of {"topic": ..., "audience": ...}
+python scripts/social_gepa.py tune data/train_tasks.json \
+  --gen-model mlx-community/Llama-3.2-3B-Instruct-4bit \
+  --reflection-model gpt-4o \
+  --auto light \
+  --output-dir models/gepa
 ```
 
-### Advanced Tuning
-```bash
-# Platform-specific optimization
-python scripts/social_gepa.py tune program.py data.json \
-  --platform x \
-  --platform instagram \
-  --fitness-metric engagement
+### Options
+- `--gen-model`: LM used for composing posts (via `dspy.settings`).
+- `--reflection-model`: LM used by GEPA reflection.
+- `--auto`: budget preset `light|medium|heavy` (or use `--max-full-evals` / `--max-metric-calls`).
+- `--cot/--no-cot`: enable Chain-of-Thought.
+- `--perplexity/--no-perplexity`: enable perplexity in scoring (slower).
 
-# Resume from checkpoint
-python scripts/social_gepa.py tune program.py data.json \
-  --resume-from models/checkpoint.pkl
-
-# Tuning with convergence settings
-python scripts/social_gepa.py tune program.py data.json \
-  --convergence 0.0001 \
-  --patience 15 \
-  --parallel
-
-# Evaluate tuned model
-python scripts/social_gepa.py evaluate \
-  models/best_model.pkl \
-  test_data.json \
-  --output evaluation_results.json
-
-# Compare multiple models
-python scripts/social_gepa.py compare \
-  models/ \
-  test_data.json \
-  --metric best_fitness \
-  --top-k 10
-```
+Output: `optimized_program.json` with predictor instructions and optional GEPA stats.
 
 ## 4. Pipeline Execution (`social_run.py`)
 
@@ -221,9 +195,10 @@ python scripts/social_run.py clean --output-dir output --yes
     "synthesize_strategies": true
   },
   "tuning": {
-    "population_size": 50,
-    "generations": 100,
-    "fitness_metric": "combined"
+    "engine": "dspy-gepa",
+    "auto": "light",
+    "reflection_model": "gpt-4o",
+    "gen_model": "mlx-community/Llama-3.2-3B-Instruct-4bit"
   },
   "generation": {
     "content_count": 20,

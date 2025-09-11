@@ -14,7 +14,7 @@ This document summarizes the implementation of the DSPy pipeline modules (T022-T
 - **PipelineFactory**: Factory pattern for creating different pipeline configurations
 - **Iterative Refinement**: Multi-iteration content improvement based on scoring feedback
 - **Batch Processing**: Efficient processing of multiple content requests
-- **GEPA Integration**: Integration with genetic algorithm optimization
+- **GEPA Integration**: Integration with DSPy GEPA (reflective prompt evolution)
 
 **DSPy Signatures:**
 - `ContentGenerationSignature`: Generate social media content based on requirements
@@ -211,7 +211,7 @@ TOGETHER_API_KEY=your_together_key
 
 ### Pipeline Configuration
 ```python
-from dspy_program import PipelineConfig, DSPyConfig, OptimizationConfig
+from dspy_program import PipelineConfig, DSPyConfig
 
 # Configure DSPy
 dspy_config = DSPyConfig(
@@ -221,17 +221,12 @@ dspy_config = DSPyConfig(
     reasoning_mode=True
 )
 
-# Configure optimization
-opt_config = OptimizationConfig(
-    population_size=20,
-    max_generations=10,
-    quality_threshold=0.8
-)
-
 # Configure pipeline
 pipeline_config = PipelineConfig(
     dspy_config=dspy_config,
-    optimization_config=opt_config,
+    use_optimization=True,
+    gepa_auto="light",  # or "medium" | "heavy"
+    gepa_reflection_model="gpt-4o",
     enable_reer_search=True,
     enable_kpi_evaluation=True,
     max_iterations=5,
@@ -253,10 +248,10 @@ python dspy_program/example_usage.py
 
 ## Integration with Existing Components
 
-### GEPA Trainer Integration
-- Pipeline integrates with `core.trainer.REERGEPATrainer`
-- Supports genetic algorithm optimization of content generation
-- Multi-objective optimization with configurable fitness functions
+### GEPA Integration
+- Pipeline integrates with `dspy_program.gepa_runner.run_gepa`
+- Uses DSPy GEPA to evolve predictor instructions with textual feedback
+- Budget via `auto` presets or explicit metric/eval budgets
 
 ### Content Scoring Integration
 - Uses `core.candidate_scorer.REERCandidateScorer` for content evaluation

@@ -174,18 +174,19 @@ python scripts/social_reer.py extract \
   --min-engagement 10 \
   --lm "dspy::together_ai/meta-llama-3.1-8b-instruct"
 
-# Step 3: Optimize DSPy pipeline with GEPA
-python scripts/social_gepa.py train \
-  --traces data/traces/traces.jsonl \
-  --output models/tuned_pipeline.pkl \
-  --iterations 20 \
-  --population-size 50 \
-  --lm "dspy::openai/gpt-4o-mini"
+# Step 3: Optimize DSPy module with GEPA (DSPy)
+# Prepare a small trainset (list of {topic, audience})
+echo '[{"topic":"AI productivity","audience":"developers"},{"topic":"Startup growth","audience":"founders"}]' > data/train_tasks.json
+python scripts/social_gepa.py tune data/train_tasks.json \
+  --gen-model mlx-community/Llama-3.2-3B-Instruct-4bit \
+  --reflection-model gpt-4o \
+  --auto light \
+  --output-dir models/gepa
 
 # Step 4: Generate multiple content candidates
 python scripts/social_run.py generate \
   --topic "AI product launch announcement" \
-  --model models/tuned_pipeline.pkl \
+  --model models/gepa/optimized_program.json \
   --traces data/traces/traces.jsonl \
   --output output/candidates.jsonl \
   --num-candidates 5 \
@@ -304,17 +305,17 @@ wc -l data/social/normalized.jsonl    # Count total records
 
 ### 1. Optimize Your Pipeline
 ```bash
-# Run GEPA optimization for better performance
-python scripts/social_gepa.py train \
-  --traces data/traces/traces.jsonl \
-  --output models/optimized_pipeline.pkl \
-  --iterations 30
+# Run GEPA (DSPy) optimization for better performance
+python scripts/social_gepa.py tune data/train_tasks.json \
+  --gen-model mlx-community/Llama-3.2-3B-Instruct-4bit \
+  --reflection-model gpt-4o \
+  --auto medium \
+  --output-dir models/gepa_medium
 
 # A/B test different models
-python scripts/social_eval.py compare \
-  --models models/tuned_pipeline.pkl,models/optimized_pipeline.pkl \
-  --test-topics "AI trends,product launches,tech insights" \
-  --output output/model_comparison.json
+python scripts/social_gepa.py compare \
+  models/gepa models/gepa_medium \
+  --metric best_val_score
 ```
 
 ### 2. Scale Content Production

@@ -1,4 +1,5 @@
 from typing import Optional
+
 """T019: DSPy language model adapter implementation.
 
 Provides DSPy integration for cloud providers (OpenAI, Anthropic, Together)

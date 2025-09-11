@@ -105,18 +105,17 @@ Trace Records → Pattern Analysis → Strategy Synthesis → Reusable Templates
 Content Candidates → Multi-Metric Analysis → Weighted Scoring → Ranked Results
 ```
 
-#### 4. GEPA Trainer (`core/trainer.py`)
-**Responsibility**: Genetic evolution-based parameter optimization for DSPy pipelines.
+#### 4. GEPA Optimization (DSPy)
+**Responsibility**: Reflective prompt evolution for DSPy modules using `dspy.teleprompt.gepa.GEPA`.
 
 **Key Features**:
-- Genetic algorithm-based optimization
-- Population-based parameter search
-- Convergence monitoring
-- Performance tracking
+- Instruction evolution with textual feedback from repo scorer
+- Budget-based exploration (`auto` presets or explicit budgets)
+- Pareto-aware candidate selection and detailed run stats (optional)
 
 **Data Flow**:
 ```
-Initial Population → Fitness Evaluation → Selection & Crossover → Mutation → Next Generation
+Trainset → Evaluate (metric+feedback) → Reflect (propose) → Compile → Iterate (budget)
 ```
 
 ### Plugin System Architecture
@@ -223,7 +222,7 @@ data/
 │   ├── traces.jsonl          # Extracted strategy traces
 │   └── backups/              # Automatic backups
 └── models/
-    ├── tuned_pipeline.pkl    # Optimized DSPy parameters
+    ├── optimized_program.json  # DSPy GEPA-optimized predictor instructions
     └── checkpoints/          # Training checkpoints
 ```
 

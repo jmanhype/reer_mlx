@@ -550,16 +550,19 @@ class REERSearchModule:
             self.search_cache[search_id] = reer_result
 
             # Record trace event (simplified for DSPy context)
+            # Seed params must match schema (topic, style, length, thread_size)
+            seed_params = {
+                "topic": query[:80],
+                "style": "informational",
+                "length": max(1, len(query)),
+                "thread_size": 1,
+            }
+
             trace_data = {
                 "id": f"search_{search_id}",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "source_post_id": search_id,
-                "seed_params": {
-                    "query": query,
-                    "enhanced_query": enhanced_query,
-                    "platform": platform,
-                    "strategy": strategy.value,
-                },
+                "seed_params": seed_params,
                 "score": (
                     len(search_results) / context.max_results
                     if context.max_results > 0
@@ -576,8 +579,8 @@ class REERSearchModule:
             }
 
             try:
-                trace_record = TraceRecord(**trace_data)
-                await self.trace_store.add_trace_record(trace_record)
+                # Append dict; underlying store validates against TraceRecord
+                await self.trace_store.append_trace(trace_data)
             except Exception as trace_error:
                 # Don't fail search if tracing fails
                 logger.warning(f"Failed to record trace: {trace_error}")

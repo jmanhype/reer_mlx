@@ -9,7 +9,6 @@ import logging
 from pathlib import Path
 
 try:
-    from ..core.trainer import OptimizationConfig
     from ..plugins.dspy_lm import DSPyConfig
     from .evaluator import KPIEvaluator
     from .pipeline import (
@@ -28,7 +27,7 @@ except ImportError:
     )
     from reer_module import REERSearchModule, SearchStrategy
 
-    from core.trainer import OptimizationConfig
+    from plugins.dspy_lm import DSPyConfig
 
 
 # Configure logging
@@ -287,20 +286,10 @@ async def optimization_example():
     logger.info("=== Optimization Example ===")
 
     try:
-        # Create optimization configuration
-        optimization_config = OptimizationConfig(
-            population_size=20,
-            max_generations=10,
-            mutation_rate=0.2,
-            crossover_rate=0.8,
-            quality_threshold=0.8,
-        )
-
         # Create optimization-focused pipeline
         pipeline = PipelineFactory.create_optimization_pipeline(
             provider="openai",
             model="gpt-3.5-turbo",
-            optimization_config=optimization_config,
         )
 
         # Define optimization target
@@ -313,26 +302,14 @@ async def optimization_example():
             "viral_target": 7.0,
         }
 
-        # Run GEPA optimization
-        logger.info("Starting GEPA optimization (this may take a while)...")
-        optimization_result = await pipeline.optimize_with_gepa(optimization_target)
+        # Run GEPA optimization (DSPy)
+        logger.info("Starting GEPA optimization (DSPy GEPA)...")
+        optimized_program = await pipeline.optimize_with_gepa(optimization_target)
 
-        if optimization_result.success:
-            best_individual = optimization_result.best_individual
-            logger.info("Optimization completed successfully!")
-            logger.info(f"Best fitness: {best_individual.overall_fitness:.3f}")
-            logger.info(f"Generations: {optimization_result.total_generations}")
-            logger.info(
-                f"Total time: {optimization_result.optimization_time_seconds:.1f}s"
-            )
-            logger.info(f"Best content: {best_individual.phenotype}")
-
-            # Show fitness breakdown
-            for metric, score in best_individual.fitness_scores.items():
-                logger.info(f"  {metric}: {score:.3f}")
-
-        else:
-            logger.error(f"Optimization failed: {optimization_result.error_message}")
+        # Use the optimized program to generate a sample
+        out = optimized_program(topic=optimization_target["topic"], audience=optimization_target["audience"])  # type: ignore[index]
+        text = out.get("post") if isinstance(out, dict) else getattr(out, "post", "")
+        logger.info(f"Optimized program generated sample: {text[:140]}...")
 
     except Exception as e:
         logger.exception(f"Optimization example failed: {e}")

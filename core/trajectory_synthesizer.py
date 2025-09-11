@@ -536,7 +536,9 @@ class REERTrajectorySynthesizer:
                         "No traces provided and no trace store configured"
                     )
 
-                since = datetime.now(timezone.utc) - timedelta(days=analysis_window_days)
+                since = datetime.now(timezone.utc) - timedelta(
+                    days=analysis_window_days
+                )
                 traces = await self.trace_store.query_traces(
                     provider=provider_filter, min_score=min_score, since=since
                 )
