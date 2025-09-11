@@ -7,16 +7,12 @@ This replaces the prior GA-based implementation; only dspy.teleprompt.gepa.GEPA
 is used going forward.
 """
 
-import asyncio
 import json
 from pathlib import Path
 import sys
-import time
-from typing import Any
 
 from loguru import logger
 from rich.console import Console
-from rich.live import Live
 from rich.table import Table
 import typer
 

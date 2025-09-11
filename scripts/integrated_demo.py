@@ -182,7 +182,6 @@ async def _demo_initialization(provider_uri: str, rate_limit: bool, trace_id: st
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-
         init_task = progress.add_task("Initializing components...", total=None)
 
         # Initialize model manager
@@ -235,7 +234,6 @@ async def _demo_trace_store_integration(trace_id: str):
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-
         extract_task = progress.add_task(
             "Extracting strategies from posts...", total=len(DEMO_CONFIG["demo_posts"])
         )
@@ -393,7 +391,6 @@ async def _demo_dspy_pipeline(
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-
         pipeline_task = progress.add_task("Running DSPy pipeline...", total=None)
 
         progress.update(pipeline_task, description="Generating content...")
@@ -471,11 +468,10 @@ async def _demo_rate_limiting(trace_id: str):
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-
         rate_task = progress.add_task("Testing rate limits...", total=5)
 
         for i in range(5):
-            progress.update(rate_task, description=f"Request {i+1}/5...")
+            progress.update(rate_task, description=f"Request {i + 1}/5...")
 
             start_time = time.time()
 
@@ -493,11 +489,11 @@ async def _demo_rate_limiting(trace_id: str):
                 )
 
                 duration = time.time() - start_time
-                console.print(f"  Request {i+1}: ✅ Success ({duration:.2f}s)")
+                console.print(f"  Request {i + 1}: ✅ Success ({duration:.2f}s)")
 
             except Exception:
                 duration = time.time() - start_time
-                console.print(f"  Request {i+1}: ⚠️ Limited ({duration:.2f}s)")
+                console.print(f"  Request {i + 1}: ⚠️ Limited ({duration:.2f}s)")
 
             progress.advance(rate_task)
 

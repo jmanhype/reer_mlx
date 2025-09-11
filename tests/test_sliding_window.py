@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Test script for MLX sliding window functionality."""
 
-import sys
 from pathlib import Path
+import sys
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -23,7 +23,7 @@ def test_sliding_window():
     )  # ~700 tokens
     y = "The final answer is 42."  # ~6 tokens
 
-    print(f"Context sizes (approx):")
+    print("Context sizes (approx):")
     print(f"  x: ~{len(x.split())} words")
     print(f"  z: ~{len(z.split())} words")
     print(f"  y: ~{len(y.split())} words")
@@ -74,7 +74,7 @@ def test_very_long_context():
     z = " ".join([f"Additional info {i}." for i in range(500)])  # ~1500 tokens
     y = "The conclusion based on all the above context."  # ~10 tokens
 
-    print(f"Very long context sizes (approx):")
+    print("Very long context sizes (approx):")
     print(f"  x: ~{len(x.split())} words")
     print(f"  z: ~{len(z.split())} words")
     print(f"  y: ~{len(y.split())} words")
@@ -85,7 +85,9 @@ def test_very_long_context():
 
         # Test with small window to force multiple sliding windows
         ppl_fn = make_mlx_ppl_evaluator(
-            model_name, window_size=512, stride=256  # Small window  # 50% overlap
+            model_name,
+            window_size=512,
+            stride=256,  # Small window  # 50% overlap
         )
 
         ppl = ppl_fn(x, y, z)

@@ -7,7 +7,7 @@ and detailed error context for debugging and monitoring.
 from typing import Any
 
 
-class REERBaseException(Exception):
+class REERBaseError(Exception):
     """Base exception for all REER-related errors."""
 
     def __init__(
@@ -25,6 +25,10 @@ class REERBaseException(Exception):
         if self.details:
             return f"{self.message} | Details: {self.details}"
         return self.message
+
+
+# Backward compatibility alias
+REERBaseException = REERBaseError
 
 
 # Storage and persistence errors

@@ -7,8 +7,7 @@ with mock-first approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 from typing import Any
@@ -58,7 +57,7 @@ class TestTraceSchemaContract:
         """Valid trace data that should pass schema validation."""
         return {
             "id": str(uuid4()),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "source_post_id": "x_post_12345",
             "seed_params": {
                 "topic": "AI development",

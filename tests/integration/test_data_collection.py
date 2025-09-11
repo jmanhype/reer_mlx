@@ -7,8 +7,7 @@ mock-first approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-from datetime import datetime, timedelta
-from datetime import timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
@@ -78,7 +77,7 @@ class TestDataCollectionIntegration:
         client.get_batch_analytics = AsyncMock()
         client.authenticate = AsyncMock(return_value=True)
         client.rate_limit_remaining = 300
-        client.rate_limit_reset = datetime.now(timezone.utc) + timedelta(minutes=15)
+        client.rate_limit_reset = datetime.now(UTC) + timedelta(minutes=15)
         return client
 
     @pytest.fixture
@@ -243,7 +242,7 @@ class TestDataCollectionIntegration:
         )
         mock_pipeline.storage.store_trace.return_value = {
             "id": expected_normalized_trace["id"],
-            "stored_at": datetime.now(timezone.utc),
+            "stored_at": datetime.now(UTC),
         }
 
         # Act - This will fail initially (RED phase)
@@ -391,7 +390,7 @@ class TestDataCollectionIntegration:
         # Arrange
         storage_result = {
             "id": expected_normalized_trace["id"],
-            "stored_at": datetime.now(timezone.utc),
+            "stored_at": datetime.now(UTC),
             "storage_location": "traces/2024/01/15",
             "indexed_fields": ["source_post_id", "timestamp", "provider"],
         }
@@ -560,15 +559,15 @@ class TestDataCollectionIntegration:
             "components": {
                 "analytics_importer": {
                     "status": "up",
-                    "last_check": datetime.now(timezone.utc),
+                    "last_check": datetime.now(UTC),
                 },
                 "data_normalizer": {
                     "status": "up",
-                    "last_check": datetime.now(timezone.utc),
+                    "last_check": datetime.now(UTC),
                 },
                 "trace_storage": {
                     "status": "up",
-                    "last_check": datetime.now(timezone.utc),
+                    "last_check": datetime.now(UTC),
                 },
             },
             "metrics": {
@@ -613,7 +612,7 @@ class TestDataCollectionIntegration:
         trace_id = expected_normalized_trace["id"]
         mock_trace_storage.store_trace.return_value = {
             "id": trace_id,
-            "stored_at": datetime.now(timezone.utc),
+            "stored_at": datetime.now(UTC),
         }
         mock_trace_storage.get_trace_by_id.return_value = expected_normalized_trace
 

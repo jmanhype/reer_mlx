@@ -7,8 +7,7 @@ Following London School TDD with mock-first approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
@@ -449,13 +448,13 @@ class TestProviderSwitchingIntegration:
                 "status": "healthy",
                 "response_time_ms": 45,
                 "error_rate": 0.02,
-                "last_check": datetime.now(timezone.utc).isoformat(),
+                "last_check": datetime.now(UTC).isoformat(),
             },
             "dspy": {
                 "status": "healthy",
                 "response_time_ms": 67,
                 "error_rate": 0.03,
-                "last_check": datetime.now(timezone.utc).isoformat(),
+                "last_check": datetime.now(UTC).isoformat(),
             },
         }
 
@@ -464,13 +463,13 @@ class TestProviderSwitchingIntegration:
                 "status": "degraded",
                 "response_time_ms": 2500,  # Significantly slower
                 "error_rate": 0.15,  # Higher error rate
-                "last_check": datetime.now(timezone.utc).isoformat(),
+                "last_check": datetime.now(UTC).isoformat(),
             },
             "dspy": {
                 "status": "healthy",
                 "response_time_ms": 78,
                 "error_rate": 0.04,
-                "last_check": datetime.now(timezone.utc).isoformat(),
+                "last_check": datetime.now(UTC).isoformat(),
             },
         }
 
@@ -592,7 +591,7 @@ class TestProviderSwitchingIntegration:
                 "multilingual_support": 0.76,
             },
             "discovery_method": "runtime_testing",
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(UTC).isoformat(),
         }
 
         dspy_capabilities = {
@@ -609,7 +608,7 @@ class TestProviderSwitchingIntegration:
                 "program_optimization": 0.87,
             },
             "discovery_method": "runtime_testing",
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(UTC).isoformat(),
         }
 
         mock_mlx_provider.get_performance_metrics.return_value = mlx_capabilities
@@ -829,7 +828,7 @@ class TestProviderSwitchingIntegration:
         """Test real-time monitoring of provider health and performance."""
         # Arrange
         monitoring_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "providers": {
                 "mlx": {
                     "status": "healthy",

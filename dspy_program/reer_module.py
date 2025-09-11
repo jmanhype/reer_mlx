@@ -7,8 +7,7 @@ content discovery and context enrichment.
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 from enum import Enum
 import logging
 import time
@@ -328,7 +327,7 @@ class MockREERSearchEngine:
                 source=f"mock_source_{i}",
                 platform=context.platform,
                 author=f"user_{i}",
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 engagement_metrics={
                     "likes": (i + 1) * 50,
                     "shares": (i + 1) * 10,
@@ -353,7 +352,7 @@ class MockREERSearchEngine:
                 "platform": context.platform,
                 "strategy": context.strategy.value,
                 "results_count": len(results),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
 
@@ -495,7 +494,7 @@ class REERSearchModule:
                 # Prepare content for analysis
                 results_content = "\n".join(
                     [
-                        f"Result {i+1}: {result.content[:200]}..."
+                        f"Result {i + 1}: {result.content[:200]}..."
                         for i, result in enumerate(search_results[:5])
                     ]
                 )
@@ -560,7 +559,7 @@ class REERSearchModule:
 
             trace_data = {
                 "id": f"search_{search_id}",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "source_post_id": search_id,
                 "seed_params": seed_params,
                 "score": (

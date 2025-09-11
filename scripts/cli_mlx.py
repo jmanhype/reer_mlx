@@ -167,7 +167,7 @@ def _display_simple_models(model_dirs: list[Path], show_sizes: bool):
         if show_sizes:
             size_mb = total_size / (1024 * 1024)
             if size_mb > 1024:
-                size_str = f"{size_mb/1024:.1f} GB"
+                size_str = f"{size_mb / 1024:.1f} GB"
             else:
                 size_str = f"{size_mb:.1f} MB"
             row.insert(2, size_str)
@@ -389,7 +389,6 @@ async def _download_model(
         TimeElapsedColumn(),
         console=console,
     ) as progress:
-
         # Mock download process
         download_task = progress.add_task("Initializing download...", total=100)
 
@@ -604,7 +603,6 @@ async def _load_model(
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-
         load_task = progress.add_task("Loading model configuration...", total=None)
 
         # Load configuration
@@ -645,7 +643,6 @@ async def _test_model_generation(adapter: MLXLanguageModelAdapter, model_name: s
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-
         gen_task = progress.add_task("Generating text...", total=None)
 
         # Mock generation
@@ -774,7 +771,6 @@ async def _quantize_model(
         TimeElapsedColumn(),
         console=console,
     ) as progress:
-
         quant_task = progress.add_task("Starting quantization...", total=100)
 
         # Load original model
@@ -988,7 +984,6 @@ async def _run_benchmark(
         TimeElapsedColumn(),
         console=console,
     ) as progress:
-
         bench_task = progress.add_task("Running benchmark tests...", total=total_tests)
 
         # Load model (mock)

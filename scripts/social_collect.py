@@ -182,7 +182,6 @@ async def _collect_data(
         TimeElapsedColumn(),
         console=console,
     ) as progress:
-
         # Initialize collector based on platform
         if platform == "x":
             XAnalyticsNormalizer()
@@ -198,17 +197,17 @@ async def _collect_data(
 
         # Mock data collection for demonstration
         for i in range(min(limit, 10)):  # Limit to 10 for demo
-            progress.update(task, description=f"Collecting post {i+1}/{limit}...")
+            progress.update(task, description=f"Collecting post {i + 1}/{limit}...")
 
             # Simulate API delay
             await asyncio.sleep(0.1)
 
             # Mock post data
             post_data = {
-                "id": f"post_{i+1}",
+                "id": f"post_{i + 1}",
                 "platform": platform,
-                "content": f"Sample post content {i+1}",
-                "author": f"user_{i+1}",
+                "content": f"Sample post content {i + 1}",
+                "author": f"user_{i + 1}",
                 "timestamp": "2024-01-01T12:00:00Z",
                 "hashtags": hashtags[:2] if hashtags else [],
                 "engagement": (
@@ -267,7 +266,7 @@ def platforms():
 def status(
     data_dir: Path = typer.Option(
         Path("data/raw"), "--data-dir", "-d", help="Data directory to check"
-    )
+    ),
 ):
     """Show status of collected data."""
 

@@ -4,8 +4,7 @@ Demonstrates the integration of X analytics normalization, DSPy content generati
 and KPI calculation for social media management.
 """
 
-from datetime import datetime, timedelta
-from datetime import timezone
+from datetime import UTC, datetime, timedelta
 import logging
 
 from .collectors.x_normalize import XAnalyticsNormalizer
@@ -125,7 +124,7 @@ def example_kpi_calculation():
     post_metrics = PostMetrics(
         post_id="1234567890",
         platform=Platform.X,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         impressions=15420,
         reach=12340,
         likes=234,
@@ -158,8 +157,8 @@ def example_kpi_calculation():
         account_id="@example_account",
         platform=Platform.X,
         post_metrics=post_metrics_list,
-        period_start=datetime.now(timezone.utc) - timedelta(days=7),
-        period_end=datetime.now(timezone.utc),
+        period_start=datetime.now(UTC) - timedelta(days=7),
+        period_end=datetime.now(UTC),
         total_followers=total_followers,
     )
 

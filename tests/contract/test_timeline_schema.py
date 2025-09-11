@@ -6,8 +6,7 @@ metadata. Following London School TDD with mock-first approach and behavior veri
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-from datetime import datetime, timedelta
-from datetime import timezone
+from datetime import UTC, datetime, timedelta
 import json
 from pathlib import Path
 from typing import Any
@@ -55,8 +54,8 @@ class TestTimelineSchemaContract:
     @pytest.fixture
     def valid_timeline_data(self) -> dict[str, Any]:
         """Valid timeline data that should pass schema validation."""
-        future_time = datetime.now(timezone.utc) + timedelta(hours=2)
-        past_time = datetime.now(timezone.utc) - timedelta(hours=1)
+        future_time = datetime.now(UTC) + timedelta(hours=2)
+        past_time = datetime.now(UTC) - timedelta(hours=1)
 
         return {
             "id": str(uuid4()),
@@ -621,7 +620,7 @@ class TestTimelineSchemaContract:
         minimal_data = {
             "id": str(uuid4()),
             "topic": "Test Topic",
-            "scheduled_time": datetime.now(timezone.utc).isoformat(),
+            "scheduled_time": datetime.now(UTC).isoformat(),
             "candidate_id": str(uuid4()),
             "drafts": [{"candidate_id": str(uuid4()), "score": 0.5, "selected": True}],
             "publication_status": "pending",

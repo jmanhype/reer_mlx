@@ -1,5 +1,3 @@
-from typing import Optional
-
 """T019: DSPy language model adapter implementation.
 
 Provides DSPy integration for cloud providers (OpenAI, Anthropic, Together)
@@ -409,7 +407,7 @@ class DSPyLanguageModelAdapter(BaseLMAdapter):
             raise ScoringError(f"Template generation failed: {e}")
 
     async def optimize_with_examples(
-        self, examples: list[dict[str, str]], metric_fn: Optional[callable] = None
+        self, examples: list[dict[str, str]], metric_fn: callable | None = None
     ) -> None:
         """Optimize the model using few-shot examples.
 

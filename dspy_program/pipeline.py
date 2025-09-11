@@ -7,8 +7,7 @@ for comprehensive social media content pipeline.
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 import json
 import logging
 from pathlib import Path
@@ -52,10 +51,10 @@ try:
         ScoringMetrics,
     )
     from ..core.exceptions import OptimizationError, ScoringError, ValidationError
+    from ..plugins.dspy_lm import DSPyConfig, DSPyLanguageModelAdapter
 
     # GEPA moved to DSPy; use runner
     from .gepa_runner import run_gepa
-    from ..plugins.dspy_lm import DSPyConfig, DSPyLanguageModelAdapter
 except ImportError:
     # Fallback for standalone usage
     try:
@@ -607,7 +606,7 @@ class REERDSPyPipeline:
             # Choose gen model from adapter config if available
             gen_model = None
             if hasattr(self.config.dspy_config, "model"):
-                gen_model = getattr(self.config.dspy_config, "model")
+                gen_model = self.config.dspy_config.model
 
             optimized_program = run_gepa(
                 train,
@@ -821,7 +820,7 @@ class REERDSPyPipeline:
                 },
                 "generation_time": result.generation_time,
                 "success": result.success,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
             with open(filepath, "w") as f:

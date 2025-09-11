@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Test script for Together backend validation and error handling."""
 
-import sys
 from pathlib import Path
-from unittest.mock import Mock, MagicMock
+import sys
+from unittest.mock import Mock
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -175,9 +175,8 @@ def test_runtime_attribute_loss():
             if call_count[0] == 1:
                 # First call succeeds
                 return {"loglikelihood": -3.0}
-            else:
-                # Subsequent calls fail
-                raise AttributeError("loglikelihood")
+            # Subsequent calls fail
+            raise AttributeError("loglikelihood")
 
         mock_lm.loglikelihood = Mock(side_effect=side_effect)
         dspy.LM = lambda model: mock_lm

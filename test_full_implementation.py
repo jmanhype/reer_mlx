@@ -4,10 +4,9 @@ Comprehensive test of the entire REER MLX implementation using actual DSPy libra
 This validates that all components work together correctly.
 """
 
-import sys
 import json
 from pathlib import Path
-from typing import Dict, Any
+import sys
 import traceback
 
 # Add project root to path
@@ -26,8 +25,9 @@ def test_dspy_modules():
     # Test 1: REER Module
     print("\n📝 Test 1: REER Module")
     try:
-        from dspy_program.reer_module import REERModule, REERSignature
         import dspy
+
+        from dspy_program.reer_module import REERModule
 
         # Configure DSPy (with mock LM to avoid API calls)
         class MockLM:
@@ -57,8 +57,9 @@ def test_dspy_modules():
     # Test 2: GEPA Runner
     print("\n📝 Test 2: GEPA Runner")
     try:
-        from dspy_program.gepa_runner import GEPARunner
         import dspy
+
+        from dspy_program.gepa_runner import GEPARunner
 
         # Check signature definitions
         runner = GEPARunner()
@@ -81,7 +82,7 @@ def test_dspy_modules():
     # Test 3: Pipeline
     print("\n📝 Test 3: DSPy Pipeline")
     try:
-        from dspy_program.pipeline import REERPipeline, PipelineSignature
+        from dspy_program.pipeline import REERPipeline
 
         pipeline = REERPipeline()
 
@@ -100,7 +101,7 @@ def test_dspy_modules():
     # Test 4: Evaluator
     print("\n📝 Test 4: DSPy Evaluator")
     try:
-        from dspy_program.evaluator import REEREvaluator, EvaluatorSignature
+        from dspy_program.evaluator import REEREvaluator
 
         evaluator = REEREvaluator()
 
@@ -177,13 +178,13 @@ def test_mlx_integration():
     # Test PPL Evaluator
     print("\n📝 Test: PPL Evaluator")
     try:
+        # Test that the functions exist and have correct signatures
+        import inspect
+
         from tools.ppl_eval import (
             make_mlx_ppl_evaluator,
             make_together_dspy_ppl_evaluator,
         )
-
-        # Test that the functions exist and have correct signatures
-        import inspect
 
         # Check MLX evaluator signature
         mlx_sig = inspect.signature(make_mlx_ppl_evaluator)
@@ -222,9 +223,11 @@ def test_cli_commands():
     # Test synthesize script
     print("\n📝 Test: Synthesize CLI")
     try:
-        from scripts.reer_synthesize import app, synthesize
-        import typer
         import inspect
+
+        import typer
+
+        from scripts.reer_synthesize import app, synthesize
 
         # Check it's a Typer app
         assert isinstance(app, typer.Typer), "Should be a Typer app"
@@ -247,7 +250,7 @@ def test_cli_commands():
         for param in required_params:
             assert param in params, f"Should have {param} parameter"
 
-        print(f"  ✅ Synthesize command has all required parameters")
+        print("  ✅ Synthesize command has all required parameters")
         results.append(("CLI Commands", True))
 
     except Exception as e:
@@ -269,10 +272,10 @@ def test_integration():
     print("\n📝 Test: End-to-End Integration")
     try:
         # Import all major components
-        from reer.trajectory_search import TrajectorySearch, TrajectorySearchConfig
-        from dspy_program.pipeline import REERPipeline
-        from tools.ppl_eval import select_ppl_evaluator
         import dspy
+
+        from dspy_program.pipeline import REERPipeline
+        from reer.trajectory_search import TrajectorySearch, TrajectorySearchConfig
 
         # Mock configuration
         class MockLM:

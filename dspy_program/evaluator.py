@@ -6,8 +6,7 @@ business impact measurement with DSPy integration.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from datetime import timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 import json
 import logging
@@ -139,7 +138,7 @@ class PerformanceMetrics:
     evaluation_time: float
     recommendations: list[str] = field(default_factory=list)
     insights: dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -326,7 +325,7 @@ class BenchmarkManager:
                 },
                 sample_size=10000,
                 time_period="2024",
-                last_updated=datetime.now(timezone.utc),
+                last_updated=datetime.now(UTC),
             ),
             "linkedin_professional": BenchmarkData(
                 platform="linkedin",
@@ -341,7 +340,7 @@ class BenchmarkManager:
                 },
                 sample_size=5000,
                 time_period="2024",
-                last_updated=datetime.now(timezone.utc),
+                last_updated=datetime.now(UTC),
             ),
             "instagram_visual": BenchmarkData(
                 platform="instagram",
@@ -356,7 +355,7 @@ class BenchmarkManager:
                 },
                 sample_size=8000,
                 time_period="2024",
-                last_updated=datetime.now(timezone.utc),
+                last_updated=datetime.now(UTC),
             ),
         }
 
@@ -1055,7 +1054,7 @@ class KPIEvaluator:
         Returns:
             Evaluation summary statistics
         """
-        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=time_window_hours)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=time_window_hours)
         recent_evaluations = [
             eval_result
             for eval_result in self.evaluation_history

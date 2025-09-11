@@ -27,8 +27,6 @@ except ImportError:
     )
     from reer_module import REERSearchModule, SearchStrategy
 
-    from plugins.dspy_lm import DSPyConfig
-
 
 # Configure logging
 logging.basicConfig(
@@ -246,7 +244,7 @@ async def kpi_evaluation_example():
                 benchmark_comparison=True,
             )
 
-            logger.info(f"Content {i+1} evaluation:")
+            logger.info(f"Content {i + 1} evaluation:")
             logger.info(
                 f"  Overall Score: {result.overall_score:.2f}/10 (Grade: {result.grade})"
             )
@@ -307,7 +305,9 @@ async def optimization_example():
         optimized_program = await pipeline.optimize_with_gepa(optimization_target)
 
         # Use the optimized program to generate a sample
-        out = optimized_program(topic=optimization_target["topic"], audience=optimization_target["audience"])  # type: ignore[index]
+        out = optimized_program(
+            topic=optimization_target["topic"], audience=optimization_target["audience"]
+        )  # type: ignore[index]
         text = out.get("post") if isinstance(out, dict) else getattr(out, "post", "")
         logger.info(f"Optimized program generated sample: {text[:140]}...")
 
@@ -363,9 +363,9 @@ async def main():
 
     for name, example_func in examples:
         try:
-            logger.info(f"\n{'='*50}")
+            logger.info(f"\n{'=' * 50}")
             logger.info(f"Running: {name}")
-            logger.info(f"{'='*50}")
+            logger.info(f"{'=' * 50}")
             await example_func()
             logger.info(f"✓ {name} completed successfully")
         except Exception as e:
@@ -374,9 +374,9 @@ async def main():
         # Small delay between examples
         await asyncio.sleep(1)
 
-    logger.info(f"\n{'='*50}")
+    logger.info(f"\n{'=' * 50}")
     logger.info("All examples completed!")
-    logger.info(f"{'='*50}")
+    logger.info(f"{'=' * 50}")
 
 
 if __name__ == "__main__":

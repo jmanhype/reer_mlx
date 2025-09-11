@@ -10,8 +10,8 @@ All heuristic/proxy evaluators have been removed by design.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import math
-from typing import Callable, Optional
 
 
 def make_mlx_ppl_evaluator(
@@ -34,8 +34,8 @@ def make_mlx_ppl_evaluator(
         stride: Sliding window stride for long contexts (default 1024)
     """
     try:
-        from mlx_lm import load  # type: ignore
         import mlx.core as mx  # type: ignore
+        from mlx_lm import load  # type: ignore
 
         model, tokenizer = load(model_name)
 

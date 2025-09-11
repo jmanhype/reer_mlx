@@ -5,34 +5,37 @@ This script examines DSPy's actual API and validates our usage patterns.
 """
 
 import inspect
-import importlib
-import sys
+import logging
 from pathlib import Path
-from typing import Any, Dict, List, Set
+import sys
 
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 
-def inspect_dspy_library():
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+
+def inspect_dspy_library():  # noqa: PLR0912
     """Inspect the actual DSPy library to understand its structure."""
     try:
         import dspy
 
-        print("=" * 80)
-        print("DSPy Library Inspection Report")
-        print("=" * 80)
+        logger.info("=" * 80)
+        logger.info("DSPy Library Inspection Report")
+        logger.info("=" * 80)
 
         # Get DSPy version and location
-        print(
+        logger.info(
             f"\n📦 DSPy Version: {dspy.__version__ if hasattr(dspy, '__version__') else 'Unknown'}"
         )
-        print(f"📁 Location: {dspy.__file__}")
+        logger.info(f"📁 Location: {dspy.__file__}")
 
         # Inspect main DSPy components
-        print("\n🔍 Main DSPy Components:")
-        print("-" * 40)
+        logger.info("\n🔍 Main DSPy Components:")
+        logger.info("-" * 40)
 
         main_components = []
         for name in dir(dspy):
@@ -44,26 +47,26 @@ def inspect_dspy_library():
                     )
 
         for name, obj_type, module in sorted(main_components):
-            print(f"  • {name:30} [{obj_type:10}] from {module}")
+            logger.info(f"  • {name:30} [{obj_type:10}] from {module}")
 
         # Inspect DSPy Signatures
-        print("\n📝 DSPy Signature System:")
-        print("-" * 40)
+        logger.info("\n📝 DSPy Signature System:")
+        logger.info("-" * 40)
 
         if hasattr(dspy, "Signature"):
             sig_class = dspy.Signature
-            print(f"  Base Class: {sig_class}")
-            print(f"  MRO: {[cls.__name__ for cls in sig_class.__mro__]}")
+            logger.info(f"  Base Class: {sig_class}")
+            logger.info(f"  MRO: {[cls.__name__ for cls in sig_class.__mro__]}")
 
             # Check for InputField and OutputField
             if hasattr(dspy, "InputField"):
-                print(f"  ✓ InputField available: {dspy.InputField}")
+                logger.info(f"  ✓ InputField available: {dspy.InputField}")
             if hasattr(dspy, "OutputField"):
-                print(f"  ✓ OutputField available: {dspy.OutputField}")
+                logger.info(f"  ✓ OutputField available: {dspy.OutputField}")
 
         # Inspect DSPy Modules
-        print("\n🧩 DSPy Module Types:")
-        print("-" * 40)
+        logger.info("\n🧩 DSPy Module Types:")
+        logger.info("-" * 40)
 
         module_types = [
             "Module",
@@ -75,25 +78,25 @@ def inspect_dspy_library():
         for module_name in module_types:
             if hasattr(dspy, module_name):
                 module_class = getattr(dspy, module_name)
-                print(f"  • {module_name}:")
-                print(f"    - Type: {type(module_class)}")
+                logger.info(f"  • {module_name}:")
+                logger.info(f"    - Type: {type(module_class)}")
 
                 # Get init signature if it's a class
                 if inspect.isclass(module_class):
                     try:
                         init_sig = inspect.signature(module_class.__init__)
-                        params = [p for p in init_sig.parameters.keys() if p != "self"]
-                        print(f"    - __init__ params: {params}")
-                    except:
-                        pass
+                        params = [p for p in init_sig.parameters if p != "self"]
+                        logger.info(f"    - __init__ params: {params}")
+                    except Exception as ex:
+                        logger.debug(f"Unable to inspect __init__: {ex}")
 
                     # Check for forward method
                     if hasattr(module_class, "forward"):
-                        print(f"    - Has forward() method: ✓")
+                        logger.info("    - Has forward() method: ✓")
 
         # Inspect DSPy Optimizers
-        print("\n🎯 DSPy Optimizers:")
-        print("-" * 40)
+        logger.info("\n🎯 DSPy Optimizers:")
+        logger.info("-" * 40)
 
         # Check for teleprompt/optimizers
         if hasattr(dspy, "teleprompt"):
@@ -102,7 +105,7 @@ def inspect_dspy_library():
                 if not name.startswith("_"):
                     obj = getattr(teleprompt, name)
                     if inspect.isclass(obj):
-                        print(f"  • {name}")
+                        logger.info(f"  • {name}")
 
         # Direct optimizer checks
         optimizer_names = [
@@ -114,45 +117,44 @@ def inspect_dspy_library():
         ]
         for opt_name in optimizer_names:
             if hasattr(dspy, opt_name):
-                print(f"  • {opt_name} - Available at dspy.{opt_name}")
+                logger.info(f"  • {opt_name} - Available at dspy.{opt_name}")
 
         # Inspect DSPy LM support
-        print("\n🤖 DSPy Language Model Support:")
-        print("-" * 40)
+        logger.info("\n🤖 DSPy Language Model Support:")
+        logger.info("-" * 40)
 
         if hasattr(dspy, "LM"):
             lm_class = dspy.LM
-            print(f"  LM Class: {lm_class}")
+            logger.info(f"  LM Class: {lm_class}")
 
             # Check LM methods
             lm_methods = [m for m in dir(lm_class) if not m.startswith("_")]
-            print(f"  Available methods: {', '.join(lm_methods[:10])}")
+            logger.info(f"  Available methods: {', '.join(lm_methods[:10])}")
 
         # Check for important functions
-        print("\n🔧 DSPy Utility Functions:")
-        print("-" * 40)
+        logger.info("\n🔧 DSPy Utility Functions:")
+        logger.info("-" * 40)
 
         utilities = ["configure", "settings", "Example", "Prediction", "Evaluate"]
         for util in utilities:
             if hasattr(dspy, util):
                 obj = getattr(dspy, util)
-                print(f"  • {util}: {type(obj).__name__}")
-
+                logger.info(f"  • {util}: {type(obj).__name__}")
+    except ImportError:
+        logger.exception("❌ Error importing DSPy")
+        return False
+    except Exception:
+        logger.exception("❌ Error inspecting DSPy")
+        return False
+    else:
         return True
 
-    except ImportError as e:
-        print(f"❌ Error importing DSPy: {e}")
-        return False
-    except Exception as e:
-        print(f"❌ Error inspecting DSPy: {e}")
-        return False
 
-
-def validate_our_dspy_usage():
+def validate_our_dspy_usage():  # noqa: PLR0912
     """Validate our DSPy implementation against the actual library."""
-    print("\n" + "=" * 80)
-    print("Validating Our DSPy Implementation")
-    print("=" * 80)
+    logger.info("\n" + "=" * 80)
+    logger.info("Validating Our DSPy Implementation")
+    logger.info("=" * 80)
 
     import dspy
 
@@ -160,7 +162,7 @@ def validate_our_dspy_usage():
     validations = []
 
     # Test 1: Signature creation
-    print("\n✅ Test 1: DSPy Signature Creation")
+    logger.info("\n✅ Test 1: DSPy Signature Creation")
     try:
 
         class TestSignature(dspy.Signature):
@@ -174,13 +176,13 @@ def validate_our_dspy_usage():
         )
 
         # Test string signature
-        test_sig = dspy.Predict("question -> answer")
+        _ = dspy.Predict("question -> answer")
         validations.append(("String signature", True, "✓ Can create string signatures"))
     except Exception as e:
         validations.append(("Signature creation", False, f"✗ Error: {e}"))
 
     # Test 2: Module creation
-    print("\n✅ Test 2: DSPy Module Creation")
+    logger.info("\n✅ Test 2: DSPy Module Creation")
     try:
 
         class TestModule(dspy.Module):
@@ -192,13 +194,13 @@ def validate_our_dspy_usage():
             def forward(self, question):
                 return self.predict(question=question)
 
-        module = TestModule()
+        _ = TestModule()
         validations.append(("Module creation", True, "✓ Can create DSPy modules"))
     except Exception as e:
         validations.append(("Module creation", False, f"✗ Error: {e}"))
 
     # Test 3: Check our imports
-    print("\n✅ Test 3: Checking Our Import Patterns")
+    logger.info("\n✅ Test 3: Checking Our Import Patterns")
 
     # Read our DSPy files
     dspy_files = list(Path(project_root / "dspy_program").glob("*.py"))
@@ -207,8 +209,8 @@ def validate_our_dspy_usage():
         if file_path.name == "__init__.py":
             continue
 
-        print(f"\n  Checking: {file_path.name}")
-        with open(file_path, "r") as f:
+        logger.info(f"\n  Checking: {file_path.name}")
+        with open(file_path) as f:
             content = f.read()
 
         # Check imports
@@ -226,7 +228,7 @@ def validate_our_dspy_usage():
             "dspy.LM": "Language model class",
         }
 
-        for pattern, description in patterns.items():
+        for pattern, _description in patterns.items():
             if pattern in content:
                 # Verify this actually exists in DSPy
                 parts = pattern.split(".")
@@ -234,10 +236,10 @@ def validate_our_dspy_usage():
                     obj = dspy
                     for part in parts[1:]:  # Skip 'dspy'
                         obj = getattr(obj, part)
-                    print(f"    ✓ {pattern} - Valid")
+                    logger.info(f"    ✓ {pattern} - Valid")
                 except AttributeError:
                     issues.append(f"    ✗ {pattern} - Not found in DSPy!")
-                    print(f"    ✗ {pattern} - NOT FOUND in actual DSPy!")
+                    logger.warning(f"    ✗ {pattern} - NOT FOUND in actual DSPy!")
 
         if issues:
             validations.append((f"{file_path.name} imports", False, "\n".join(issues)))
@@ -247,12 +249,12 @@ def validate_our_dspy_usage():
             )
 
     # Test 4: GEPA Optimizer
-    print("\n✅ Test 4: GEPA Optimizer Validation")
+    logger.info("\n✅ Test 4: GEPA Optimizer Validation")
     try:
         if hasattr(dspy, "GEPA"):
             gepa_sig = inspect.signature(dspy.GEPA.__init__)
-            params = [p for p in gepa_sig.parameters.keys() if p != "self"]
-            print(f"  GEPA __init__ parameters: {params}")
+            params = [p for p in gepa_sig.parameters if p != "self"]
+            logger.info(f"  GEPA __init__ parameters: {params}")
             validations.append(
                 (
                     "GEPA optimizer",
@@ -268,15 +270,15 @@ def validate_our_dspy_usage():
         validations.append(("GEPA optimizer", False, f"✗ Error: {e}"))
 
     # Test 5: Validate actual usage
-    print("\n✅ Test 5: Testing Actual DSPy Patterns")
+    logger.info("\n✅ Test 5: Testing Actual DSPy Patterns")
 
     # Test configuration
     try:
         # Note: We don't actually configure to avoid API calls
-        print("  Testing dspy.settings.configure pattern...")
+        logger.info("  Testing dspy.settings.configure pattern...")
         if hasattr(dspy.settings, "configure"):
             sig = inspect.signature(dspy.settings.configure)
-            print(f"    configure() params: {list(sig.parameters.keys())}")
+            logger.info(f"    configure() params: {list(sig.parameters.keys())}")
             validations.append(
                 ("settings.configure", True, "✓ Configuration method available")
             )
@@ -284,27 +286,29 @@ def validate_our_dspy_usage():
         validations.append(("settings.configure", False, f"✗ Error: {e}"))
 
     # Print validation summary
-    print("\n" + "=" * 80)
-    print("Validation Summary")
-    print("=" * 80)
+    logger.info("\n" + "=" * 80)
+    logger.info("Validation Summary")
+    logger.info("=" * 80)
 
     passed = sum(1 for _, status, _ in validations if status)
     total = len(validations)
 
     for name, status, message in validations:
         status_icon = "✅" if status else "❌"
-        print(f"{status_icon} {name}: {message}")
+        logger.info(f"{status_icon} {name}: {message}")
 
-    print(f"\n📊 Results: {passed}/{total} validations passed ({passed*100//total}%)")
+    logger.info(
+        f"\n📊 Results: {passed}/{total} validations passed ({passed * 100 // total}%)"
+    )
 
     return passed == total
 
 
 def check_dspy_lm_compatibility():
     """Check DSPy's LM interface for loglikelihood support."""
-    print("\n" + "=" * 80)
-    print("DSPy LM Interface Analysis")
-    print("=" * 80)
+    logger.info("\n" + "=" * 80)
+    logger.info("DSPy LM Interface Analysis")
+    logger.info("=" * 80)
 
     try:
         import dspy
@@ -312,64 +316,64 @@ def check_dspy_lm_compatibility():
         if hasattr(dspy, "LM"):
             lm_class = dspy.LM
 
-            print("\n🔍 DSPy.LM Methods:")
+            logger.info("\n🔍 DSPy.LM Methods:")
             methods = [m for m in dir(lm_class) if not m.startswith("_")]
             for method in sorted(methods):
                 method_obj = getattr(lm_class, method)
                 if callable(method_obj):
                     try:
                         sig = inspect.signature(method_obj)
-                        print(f"  • {method}{sig}")
-                    except:
-                        print(f"  • {method}()")
+                        logger.info(f"  • {method}{sig}")
+                    except Exception:
+                        logger.info(f"  • {method}()")
 
             # Check specifically for loglikelihood
             if hasattr(lm_class, "loglikelihood"):
-                print("\n✅ loglikelihood method found!")
+                logger.info("\n✅ loglikelihood method found!")
                 sig = inspect.signature(lm_class.loglikelihood)
-                print(f"  Signature: {sig}")
+                logger.info(f"  Signature: {sig}")
             else:
-                print("\n⚠️ No loglikelihood method in dspy.LM")
-                print("  Our Together backend validation is correct!")
+                logger.warning("\n⚠️ No loglikelihood method in dspy.LM")
+                logger.info("  Our Together backend validation is correct!")
 
-    except Exception as e:
-        print(f"Error analyzing LM: {e}")
+    except Exception:
+        logger.exception("Error analyzing LM")
 
 
 def analyze_our_gepa_usage():
     """Analyze our GEPA runner implementation."""
-    print("\n" + "=" * 80)
-    print("GEPA Runner Analysis")
-    print("=" * 80)
+    logger.info("\n" + "=" * 80)
+    logger.info("GEPA Runner Analysis")
+    logger.info("=" * 80)
 
     gepa_file = project_root / "dspy_program" / "gepa_runner.py"
 
     if gepa_file.exists():
-        with open(gepa_file, "r") as f:
+        with open(gepa_file) as f:
             content = f.read()
 
         # Extract GEPA usage
         if "GEPA(" in content:
-            print("✅ GEPA initialization found")
+            logger.info("✅ GEPA initialization found")
 
             # Check for required parameters
             required_params = ["metric", "num_threads", "track_stats"]
             for param in required_params:
                 if f"{param}=" in content:
-                    print(f"  ✓ {param} parameter set")
+                    logger.info(f"  ✓ {param} parameter set")
                 else:
-                    print(f"  ⚠️ {param} parameter might be missing")
+                    logger.warning(f"  ⚠️ {param} parameter might be missing")
 
         # Check compile method usage
         if ".compile(" in content:
-            print("\n✅ GEPA compile() method used")
+            logger.info("\n✅ GEPA compile() method used")
             if "student=" in content and "trainset=" in content:
-                print("  ✓ Required compile parameters present")
+                logger.info("  ✓ Required compile parameters present")
 
 
 if __name__ == "__main__":
     # Run all validations
-    print("🚀 Starting DSPy Implementation Validation\n")
+    logger.info("🚀 Starting DSPy Implementation Validation\n")
 
     # 1. Inspect DSPy library
     if inspect_dspy_library():
@@ -382,4 +386,4 @@ if __name__ == "__main__":
         # 4. Analyze GEPA usage
         analyze_our_gepa_usage()
 
-    print("\n✨ Validation Complete!")
+    logger.info("\n✨ Validation Complete!")

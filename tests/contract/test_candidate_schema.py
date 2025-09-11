@@ -7,8 +7,7 @@ approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 from typing import Any
@@ -58,7 +57,7 @@ class TestCandidateSchemaContract:
         """Valid candidate data that should pass schema validation."""
         return {
             "id": str(uuid4()),
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "content": "Exploring the latest trends in AI development! What's your take on the future of machine learning? #AI #TechTrends",
             "thread_parts": [
                 "Exploring the latest trends in AI development!",
@@ -708,7 +707,7 @@ class TestCandidateSchemaContract:
         """Test minimal candidate with only required fields."""
         minimal_data = {
             "id": str(uuid4()),
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "content": "Minimal post",
             "features": {
                 "length": 12,

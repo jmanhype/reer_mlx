@@ -5,8 +5,7 @@ for consistent processing across the REER × DSPy × MLX pipeline.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 from enum import Enum
 import logging
 from typing import Any
@@ -92,7 +91,7 @@ class XAnalyticsNormalizer:
             if isinstance(created_at, str):
                 timestamp = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
             else:
-                timestamp = datetime.now(timezone.utc)
+                timestamp = datetime.now(UTC)
 
             # Extract metrics
             public_metrics = tweet_data.get("public_metrics", {})
@@ -247,7 +246,7 @@ class XAnalyticsNormalizer:
             List of normalized user metrics
         """
         metrics = []
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
 
         public_metrics = user_data.get("public_metrics", {})
         user_id = user_data.get("id", "")
@@ -310,7 +309,7 @@ class XAnalyticsNormalizer:
                     "tweet_volume": trend.get("tweet_volume"),
                     "url": trend.get("url", ""),
                     "promoted_content": trend.get("promoted_content"),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
                 normalized_trends.append(normalized_trend)
 
@@ -319,7 +318,7 @@ class XAnalyticsNormalizer:
                 "location": trends_data.get("locations", [{}])[0],
                 "as_of": trends_data.get("as_of", ""),
                 "created_at": trends_data.get("created_at", ""),
-                "normalized_at": datetime.now(timezone.utc).isoformat(),
+                "normalized_at": datetime.now(UTC).isoformat(),
             }
 
         except Exception as e:

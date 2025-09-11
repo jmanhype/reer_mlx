@@ -210,7 +210,6 @@ async def _run_evaluation(
         TimeElapsedColumn(),
         console=console,
     ) as progress:
-
         # Load content data
         load_task = progress.add_task("Loading content data...", total=None)
 
@@ -767,7 +766,6 @@ def benchmark(
         TimeElapsedColumn(),
         console=console,
     ) as progress:
-
         task = progress.add_task("Benchmarking models...", total=len(model_files))
 
         for model_file in model_files:

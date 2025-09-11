@@ -19,8 +19,7 @@ Usage:
 import argparse
 from collections import defaultdict
 from dataclasses import asdict, dataclass
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 import json
 import logging
 from pathlib import Path
@@ -314,7 +313,7 @@ class SchemaValidator:
                 scheduled = datetime.fromisoformat(
                     data["scheduled_time"].replace("Z", "+00:00")
                 )
-                if scheduled < datetime.now(timezone.utc):
+                if scheduled < datetime.now(UTC):
                     warnings.append(
                         {
                             "message": "Scheduled time is in the past",
@@ -796,7 +795,7 @@ class AutoFixer:
             if field_schema.get("format") == "uuid":
                 return str(uuid4())
             if field_schema.get("format") == "date-time":
-                return datetime.now(timezone.utc).isoformat()
+                return datetime.now(UTC).isoformat()
             if field_name in ["provider"]:
                 return "mlx::default-model"
             if field_name in ["source_post_id"]:
@@ -952,7 +951,7 @@ class BatchValidator:
         files_with_warnings = len({r.file_path for r in results if r.warnings})
 
         report = ValidationReport(
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             total_files=total_files,
             total_records=total_records,
             valid_files=valid_files,
@@ -1068,7 +1067,6 @@ class BatchValidator:
             jsonlines.open(file_path, mode="r") as reader,
             jsonlines.open(output_file, mode="w") as writer,
         ):
-
             for line_num, data in enumerate(reader, 1):
                 fixed_data, fixes_applied = self.auto_fixer.auto_fix_data(
                     data, schema_name
@@ -1241,7 +1239,6 @@ Examples:
 
         # Print results
         for result in results:
-
             if result.errors:
                 for error in result.errors:
                     (

@@ -7,8 +7,7 @@ temporal analysis, and strategy clustering to identify successful approaches.
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from datetime import timezone
+from datetime import UTC, datetime, timedelta
 import json
 from pathlib import Path
 from typing import Any
@@ -16,6 +15,7 @@ from typing import Any
 import numpy as np
 
 from tools.memory_profiler import check_memory_limit, memory_context, memory_profile
+
 from .exceptions import TrajectoryError
 from .trace_store import REERTraceStore
 
@@ -62,7 +62,7 @@ class StrategySynthesis:
     temporal_insights: dict[str, Any]
     content_insights: dict[str, Any]
     synthesis_confidence: float
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class FeatureExtractor:
@@ -481,7 +481,7 @@ class TrajectoryBuilder:
         try:
             return datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
         except ValueError:
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
 
 class REERTrajectorySynthesizer:
@@ -536,9 +536,7 @@ class REERTrajectorySynthesizer:
                         "No traces provided and no trace store configured"
                     )
 
-                since = datetime.now(timezone.utc) - timedelta(
-                    days=analysis_window_days
-                )
+                since = datetime.now(UTC) - timedelta(days=analysis_window_days)
                 traces = await self.trace_store.query_traces(
                     provider=provider_filter, min_score=min_score, since=since
                 )
@@ -559,7 +557,7 @@ class REERTrajectorySynthesizer:
                 for i in range(0, len(traces), chunk_size):
                     chunk_traces = traces[i : i + chunk_size]
 
-                    with memory_context(f"process_chunk_{i//chunk_size}"):
+                    with memory_context(f"process_chunk_{i // chunk_size}"):
                         # Build trajectories for chunk
                         chunk_trajectories = self.trajectory_builder.build_trajectories(
                             chunk_traces

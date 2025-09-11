@@ -7,9 +7,8 @@ Supports validation against JSON schema and maintains data integrity.
 
 import asyncio
 from collections.abc import AsyncIterator, Callable, Iterator
-from contextlib import asynccontextmanager
-from datetime import datetime
-from datetime import timezone
+from contextlib import asynccontextmanager, suppress
+from datetime import UTC, datetime
 import fcntl
 import json
 import logging
@@ -22,14 +21,21 @@ from jsonschema import ValidationError as JSONSchemaValidationError
 from jsonschema import validate
 from pydantic import BaseModel, Field, validator
 
-logger = logging.getLogger(__name__)
-
 from tools.memory_profiler import (
     StreamingJSONLReader,
     check_memory_limit,
     memory_profile,
 )
+
 from .exceptions import TraceStoreError, ValidationError
+
+logger = logging.getLogger(__name__)
+
+# Constants
+MAX_SEED_LENGTH = 10_000
+MAX_THREAD_SIZE = 25
+ENGAGEMENT_RATE_MAX = 100.0
+PROCESS_MEM_MB_HIGH = 500
 
 
 class TraceRecord(BaseModel):
@@ -58,7 +64,7 @@ class TraceRecord(BaseModel):
         try:
             UUID(v, version=4)
         except ValueError:
-            raise ValueError("id must be a valid UUID v4")
+            raise ValueError("id must be a valid UUID v4") from None
         return v
 
     @validator("timestamp")
@@ -68,7 +74,7 @@ class TraceRecord(BaseModel):
         try:
             datetime.fromisoformat(v.replace("Z", "+00:00"))
         except ValueError:
-            raise ValueError("timestamp must be ISO 8601 format")
+            raise ValueError("timestamp must be ISO 8601 format") from None
         return v
 
     @validator("seed_params")
@@ -80,10 +86,12 @@ class TraceRecord(BaseModel):
             raise ValueError(f"seed_params must contain: {required_fields}")
 
         # Validate constraints
-        if not isinstance(v.get("length"), int) or not (1 <= v["length"] <= 10000):
+        if not isinstance(v.get("length"), int) or not (
+            1 <= v["length"] <= MAX_SEED_LENGTH
+        ):
             raise ValueError("seed_params.length must be integer 1-10000")
         if not isinstance(v.get("thread_size"), int) or not (
-            1 <= v["thread_size"] <= 25
+            1 <= v["thread_size"] <= MAX_THREAD_SIZE
         ):
             raise ValueError("seed_params.thread_size must be integer 1-25")
 
@@ -104,7 +112,7 @@ class TraceRecord(BaseModel):
 
         engagement_rate = v.get("engagement_rate")
         if not isinstance(engagement_rate, int | float) or not (
-            0.0 <= engagement_rate <= 100.0
+            0.0 <= engagement_rate <= ENGAGEMENT_RATE_MAX
         ):
             raise ValueError("metrics.engagement_rate must be number 0.0-100.0")
 
@@ -190,7 +198,7 @@ class REERTraceStore:
             raise ValidationError(
                 f"Pydantic validation failed: {str(e)}",
                 details={"trace_id": trace.get("id"), "error": str(e)},
-            )
+            ) from e
 
     async def _validate_trace_async(self, trace: dict[str, Any]) -> None:
         """Async validation including JSON schema if available."""
@@ -212,7 +220,7 @@ class REERTraceStore:
                             "instance_path": str(e.absolute_path),
                         },
                         original_error=e,
-                    )
+                    ) from e
 
     @asynccontextmanager
     async def _file_lock(self, mode: str = "a"):
@@ -233,7 +241,7 @@ class REERTraceStore:
                     f"File lock error: {str(e)}",
                     details={"file_path": str(self.file_path), "mode": mode},
                     original_error=e,
-                )
+                ) from e
 
     @memory_profile(operation_name="append_trace")
     async def append_trace(self, trace: dict[str, Any]) -> str:
@@ -256,7 +264,7 @@ class REERTraceStore:
         if "id" not in trace:
             trace["id"] = str(uuid4())
         if "timestamp" not in trace:
-            trace["timestamp"] = datetime.now(timezone.utc).isoformat()
+            trace["timestamp"] = datetime.now(UTC).isoformat()
 
         try:
             async with self._file_lock("a") as f:
@@ -265,14 +273,14 @@ class REERTraceStore:
                 f.write(json_line + "\n")
                 f.flush()
 
-            return trace["id"]
-
         except Exception as e:
             raise TraceStoreError(
                 f"Failed to append trace: {str(e)}",
                 details={"trace_id": trace.get("id")},
                 original_error=e,
-            )
+            ) from e
+        else:
+            return trace["id"]
 
     @memory_profile(operation_name="append_traces")
     async def append_traces(self, traces: list[dict[str, Any]]) -> list[str]:
@@ -308,7 +316,7 @@ class REERTraceStore:
             if "id" not in trace:
                 trace["id"] = str(uuid4())
             if "timestamp" not in trace:
-                trace["timestamp"] = datetime.now(timezone.utc).isoformat()
+                trace["timestamp"] = datetime.now(UTC).isoformat()
 
             trace_ids.append(trace["id"])
             validated_traces.append(trace)
@@ -326,7 +334,7 @@ class REERTraceStore:
                 current_memory = get_memory_tracker().get_current_snapshot()
 
                 # Reduce chunk size if memory usage is high
-                if current_memory.process_memory_mb > 500:
+                if current_memory.process_memory_mb > PROCESS_MEM_MB_HIGH:
                     chunk_size = base_chunk_size // 2
                 else:
                     chunk_size = base_chunk_size
@@ -352,14 +360,14 @@ class REERTraceStore:
                     # Clear processed chunk from memory
                     del chunk
 
-            return trace_ids
-
         except Exception as e:
             raise TraceStoreError(
                 f"Failed to append traces: {str(e)}",
                 details={"trace_count": len(traces)},
                 original_error=e,
-            )
+            ) from e
+        else:
+            return trace_ids
 
     async def get_trace_by_id(self, trace_id: str) -> dict[str, Any] | None:
         """Get a trace by its ID.
@@ -459,7 +467,7 @@ class REERTraceStore:
                 f"Failed to read traces: {str(e)}",
                 details={"file_path": str(self.file_path)},
                 original_error=e,
-            )
+            ) from e
 
     def iter_traces_sync(self) -> Iterator[dict[str, Any]]:
         """Synchronous iterator over all traces in the store."""
@@ -475,7 +483,7 @@ class REERTraceStore:
                 f"Failed to read traces: {str(e)}",
                 details={"file_path": str(self.file_path)},
                 original_error=e,
-            )
+            ) from e
 
     async def count_traces(self) -> int:
         """Count total number of traces in the store."""
@@ -498,16 +506,13 @@ class REERTraceStore:
             traces.append(trace)
 
         # Sort by timestamp (newest first)
-        try:
+        with suppress(ValueError, TypeError):
             traces.sort(
                 key=lambda t: datetime.fromisoformat(
                     t.get("timestamp", "").replace("Z", "+00:00")
                 ),
                 reverse=True,
             )
-        except (ValueError, TypeError):
-            # If timestamp parsing fails, return in file order
-            pass
 
         return traces[:limit]
 
@@ -526,19 +531,21 @@ class REERTraceStore:
 
         try:
             if self.file_path.exists():
-                async with aiofiles.open(self.file_path) as src:
-                    async with aiofiles.open(backup_path, "w") as dst:
-                        async for line in src:
-                            await dst.write(line)
-
-            return backup_path
+                async with (
+                    aiofiles.open(self.file_path) as src,
+                    aiofiles.open(backup_path, "w") as dst,
+                ):
+                    async for line in src:
+                        await dst.write(line)
 
         except Exception as e:
             raise TraceStoreError(
                 f"Failed to create backup: {str(e)}",
                 details={"backup_path": str(backup_path)},
                 original_error=e,
-            )
+            ) from e
+        else:
+            return backup_path
 
     async def validate_store(self) -> dict[str, Any]:
         """Validate the entire trace store with memory optimization.
@@ -582,7 +589,7 @@ class REERTraceStore:
         except Exception as e:
             raise TraceStoreError(
                 f"Failed to validate store: {str(e)}", original_error=e
-            )
+            ) from e
 
         return stats
 
@@ -628,7 +635,7 @@ class REERTraceStore:
             - final_memory.process_memory_mb,
             "objects_collected": sum(collected.values()),
             "objects_cleaned": cleaned,
-            "optimization_timestamp": datetime.now(timezone.utc).isoformat(),
+            "optimization_timestamp": datetime.now(UTC).isoformat(),
         }
 
     async def stream_traces_filtered(

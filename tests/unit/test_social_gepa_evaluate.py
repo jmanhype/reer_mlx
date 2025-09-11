@@ -1,5 +1,5 @@
-from pathlib import Path
 import json
+from pathlib import Path
 
 
 def test_evaluate_handles_missing_fields(tmp_path: Path):

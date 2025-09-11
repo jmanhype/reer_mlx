@@ -4,8 +4,7 @@ Tests that the schema validation utility integrates correctly with the existing
 contract test framework and provides consistent validation behavior.
 """
 
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 import subprocess
@@ -55,7 +54,7 @@ class TestSchemaValidatorIntegration:
         """Valid trace data for testing."""
         return {
             "id": str(uuid4()),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "source_post_id": "x_post_12345",
             "seed_params": {
                 "topic": "AI development",
@@ -207,7 +206,7 @@ class TestSchemaValidatorIntegration:
         """Test automatic type conversion fixes."""
         invalid_data = {
             "id": str(uuid4()),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "source_post_id": "x_post_12345",
             "seed_params": {
                 "topic": "AI development",
@@ -244,7 +243,7 @@ class TestSchemaValidatorIntegration:
         """Test automatic constraint violation fixes."""
         invalid_data = {
             "id": str(uuid4()),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "source_post_id": "x_post_12345",
             "seed_params": {
                 "topic": "AI development",
@@ -285,7 +284,7 @@ class TestSchemaValidatorIntegration:
         """Test automatic addition of missing required fields."""
         incomplete_data = {
             "id": str(uuid4()),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             # Missing source_post_id, seed_params, score, metrics, strategy_features, provider, metadata
         }
 
@@ -607,7 +606,7 @@ class TestSchemaValidatorIntegration:
 
         unicode_data = {
             "id": str(uuid4()),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "source_post_id": "post_🚀_测试",
             "seed_params": {
                 "topic": "AI 🤖 development",

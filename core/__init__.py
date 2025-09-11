@@ -1,18 +1,36 @@
 """REER × DSPy × MLX Social Posting Pack - Core Module"""
 
-__version__ = "0.1.0"
-__author__ = "REER Team"
-__description__ = "Core functionality for social posting with DSPy and MLX"
-
-# Core modules
+# Core modules (sorted imports)
 from .candidate_scorer import ContentCandidate, REERCandidateScorer, ScoringMetrics
-from .exceptions import *
+from .exceptions import (
+    ConvergenceError,
+    ExtractionError,
+    FitnessError,
+    ImportError,
+    NormalizationError,
+    OptimizationError,
+    PatternAnalysisError,
+    PerplexityError,
+    REERBaseException,
+    ScoringError,
+    StorageError,
+    StrategyError,
+    SynthesisError,
+    TraceStoreError,
+    TrainingError,
+    TrajectoryError,
+    ValidationError,
+)
 from .trace_store import REERTraceStore, TraceRecord
 from .trajectory_synthesizer import (
     REERTrajectorySynthesizer,
     StrategyPattern,
     StrategySynthesis,
 )
+
+__version__ = "0.1.0"
+__author__ = "REER Team"
+__description__ = "Core functionality for social posting with DSPy and MLX"
 
 __all__ = [
     # Exceptions

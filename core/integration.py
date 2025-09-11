@@ -10,14 +10,16 @@ This module provides centralized integration services connecting:
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 import json
 import logging
 from pathlib import Path
 import time
 from typing import Any
 from uuid import uuid4
+
+from reer.trajectory_search import TrajectorySearch, TrajectorySearchConfig
+from tools.ppl_eval import select_ppl_evaluator
 
 from ..plugins.lm_registry import get_registry
 from .exceptions import (
@@ -26,8 +28,6 @@ from .exceptions import (
     TraceStoreError,
 )
 from .trace_store import REERTraceStore
-from reer.trajectory_search import TrajectorySearch, TrajectorySearchConfig
-from tools.ppl_eval import select_ppl_evaluator
 
 # ============================================================================
 # Rate Limiting and Backoff
@@ -107,9 +107,10 @@ class RateLimiter:
 
             # Add jitter
             if self.config.jitter:
-                import random
+                import secrets
 
-                delay *= 0.5 + 0.5 * random.random()
+                rand = secrets.randbelow(10_000) / 10_000.0
+                delay *= 0.5 + 0.5 * rand
 
             self.logger.info(
                 f"Applying backoff delay {delay:.2f}s "
@@ -193,7 +194,7 @@ class StructuredLogger:
             def format(self, record):
                 log_entry = {
                     "timestamp": datetime.fromtimestamp(
-                        record.created, tz=timezone.utc
+                        record.created, tz=UTC
                     ).isoformat(),
                     "level": record.levelname,
                     "logger": record.name,
@@ -401,7 +402,7 @@ class IntegratedREERMiner:
             # Create trace record
             trace_data = {
                 "id": trace_id,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "source_post_id": source_post_id,
                 "seed_params": seed_params,
                 "score": score,
@@ -437,7 +438,7 @@ class IntegratedREERMiner:
                 features_count=len(strategy_features),
             )
 
-            return stored_trace_id
+            # return handled in else block
 
         except Exception as e:
             # Record failure
@@ -460,8 +461,10 @@ class IntegratedREERMiner:
                 f"Extraction failed for post {source_post_id}: {e}",
                 details={"source_post_id": source_post_id, "trace_id": trace_id},
                 original_error=e,
-            )
+            ) from e
 
+        else:
+            return stored_trace_id
         finally:
             self._operation_stats["total_extractions"] += 1
 
@@ -502,14 +505,14 @@ class IntegratedREERMiner:
 
             confidence = 0.85  # Mock confidence
 
-            return strategy_features, confidence
-
         except Exception as e:
             raise ExtractionError(
                 f"Strategy extraction failed: {e}",
                 details={"provider_uri": provider_uri, "trace_id": trace_id},
                 original_error=e,
-            )
+            ) from e
+        else:
+            return strategy_features, confidence
 
     async def _calculate_performance_score(
         self,
@@ -528,14 +531,14 @@ class IntegratedREERMiner:
             base_score = 1.0 / (1.0 + perplexity / 10.0)
             feature_bonus = len(strategy_features) * 0.05
 
-            return min(1.0, base_score + feature_bonus)
-
         except Exception as e:
             raise ScoringError(
                 f"Performance scoring failed: {e}",
                 details={"provider_uri": provider_uri, "trace_id": trace_id},
                 original_error=e,
-            )
+            ) from e
+        else:
+            return min(1.0, base_score + feature_bonus)
 
     async def query_traces(
         self,
@@ -578,8 +581,6 @@ class IntegratedREERMiner:
                 result_count=len(traces),
             )
 
-            return traces
-
         except Exception as e:
             duration_ms = (time.time() - start_time) * 1000
             self.logger.log_with_context(
@@ -590,6 +591,8 @@ class IntegratedREERMiner:
                 error_type=type(e).__name__,
             )
             raise
+        else:
+            return traces
 
     async def get_performance_stats(self) -> dict[str, Any]:
         """Get performance statistics for the mining service."""

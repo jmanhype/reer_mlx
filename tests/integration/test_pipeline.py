@@ -7,8 +7,7 @@ London School TDD with mock-first approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
@@ -132,7 +131,7 @@ class TestContentGenerationPipelineIntegration:
             "content_id": str(uuid4()),
             "request_id": "request_001",
             "status": "generated",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "base_content": {
                 "text": "🚀 Essential AI development tip: Always validate your training data before fine-tuning. Poor data quality = poor model performance. What's your go-to data validation strategy? Share below! #AI #MachineLearning #BestPractices",
                 "structure": {
@@ -952,7 +951,7 @@ class TestContentGenerationPipelineIntegration:
                 "disk_usage_mb": 89,
             },
             "alerts": [],
-            "last_health_check": datetime.now(timezone.utc).isoformat(),
+            "last_health_check": datetime.now(UTC).isoformat(),
         }
 
         mock_generation_pipeline.health_check.return_value = health_status

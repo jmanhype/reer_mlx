@@ -12,8 +12,9 @@ proxy PPL(y|x,z). Caching ensures efficiency on repeated evaluations.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable
+from typing import Any
 
 
 @dataclass

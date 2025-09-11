@@ -7,8 +7,7 @@ formulation. Following London School TDD with mock-first approach.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
@@ -214,7 +213,7 @@ class TestREERMiningIntegration:
             "name": "High-Engagement Technical Content Strategy",
             "description": "Optimized strategy for technical content with maximum engagement",
             "confidence": 0.85,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "components": {
                 "content_structure": {
                     "opening": "attention_grabbing_statement",

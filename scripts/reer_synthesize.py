@@ -11,21 +11,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import sys
-from typing import Any
 
-import typer
 from rich.console import Console
 from rich.table import Table
+import typer
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from reer.trajectory_search import TrajectorySearch, TrajectorySearchConfig
-from tools.ppl_eval import (
-    select_ppl_evaluator,
-    make_mlx_ppl_evaluator,
-    make_together_dspy_ppl_evaluator,
-)
 
 app = typer.Typer(help="REER trajectory synthesis (local-search MVP)")
 console = Console()

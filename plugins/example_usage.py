@@ -76,7 +76,6 @@ async def example_content_scoring():
 
     # Analyze each text
     for _i, text in enumerate(sample_texts, 1):
-
         # Basic content analysis
         ContentAnalyzer.analyze_content(text)
 
@@ -94,7 +93,6 @@ async def example_perplexity_calculation():
     ]
 
     for text in test_texts:
-
         # Calculate perplexity using dummy model
         with contextlib.suppress(Exception):
             await calculate_perplexity("dummy://test-model", text)
@@ -117,14 +115,11 @@ async def example_health_check():
     health_status = await registry.health_check()
 
     for _provider, status in health_status.items():
-
         if status.get("error"):
             pass
-        else:
-
-            if "test_generation" in status:
-                if status.get("test_response_length"):
-                    pass
+        elif "test_generation" in status:
+            if status.get("test_response_length"):
+                pass
 
 
 async def main():

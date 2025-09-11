@@ -7,7 +7,8 @@ allowing reflective prompt evolution driven by `REERCandidateScorer`.
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 try:
     import dspy
@@ -60,9 +61,9 @@ def _make_metric(scorer: REERCandidateScorer):
     def metric(
         gold: Example,  # type: ignore[name-defined]
         pred: Prediction,  # type: ignore[name-defined]
-        trace: Optional[Any],
-        pred_name: Optional[str],
-        pred_trace: Optional[Any],
+        trace: Any | None,
+        pred_name: str | None,
+        pred_trace: Any | None,
     ) -> dict[str, Any]:
         # Extract text from pred in either dict or object form
         if isinstance(pred, dict):
@@ -85,14 +86,14 @@ def _make_metric(scorer: REERCandidateScorer):
 def run_gepa(
     train_tasks: Iterable[dict[str, str]],
     *,
-    val_tasks: Optional[Iterable[dict[str, str]]] = None,
+    val_tasks: Iterable[dict[str, str]] | None = None,
     gen_model: str = "mlx-community/Llama-3.2-3B-Instruct-4bit",
     reflection_model: str = "gpt-4o",
     auto: str | None = "light",
     max_full_evals: int | None = None,
     max_metric_calls: int | None = None,
     track_stats: bool = True,
-    log_dir: Optional[str] = None,
+    log_dir: str | None = None,
     use_cot: bool = True,
     use_perplexity: bool = False,
 ):

@@ -31,7 +31,6 @@ sys.path.insert(0, str(project_root))
 
 
 from core import REERCandidateScorer, REERTraceStore, REERTrajectorySynthesizer
-from core.trace_store import TraceRecord
 
 app = typer.Typer(
     name="social-reer",
@@ -213,7 +212,6 @@ async def _run_reer_mining(
         TimeElapsedColumn(),
         console=console,
     ) as progress:
-
         # Load input data
         load_task = progress.add_task("Loading input data...", total=None)
 

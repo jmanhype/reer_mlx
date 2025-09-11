@@ -25,7 +25,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import memory profiling tools
-from ..core.trace_store import REERTraceStore
 from tools.memory_profiler import (
     LazyModelLoader,
     MemoryOptimizer,
@@ -42,6 +41,8 @@ from tools.memory_profiler import (
     start_memory_monitoring,
     stop_memory_monitoring,
 )
+
+from ..core.trace_store import REERTraceStore
 
 
 # Example 1: Basic memory profiling with decorators

@@ -11,13 +11,11 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from pathlib import Path
 from statistics import mean
-from typing import Any
 
-import typer
 from rich.console import Console
 from rich.table import Table
+import typer
 
 from core.candidate_scorer import (
     ContentCandidate,

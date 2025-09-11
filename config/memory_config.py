@@ -4,6 +4,8 @@ Memory profiling configuration for REER MLX system.
 
 from dataclasses import dataclass
 import os
+from pathlib import Path
+import tempfile
 from typing import Any
 
 
@@ -46,7 +48,7 @@ class MemoryConfig:
 
     # Reporting settings
     save_memory_reports: bool = True
-    report_directory: str = "/tmp/reer_memory_reports"
+    report_directory: str = str(Path(tempfile.gettempdir()) / "reer_memory_reports")
     report_retention_days: int = 7
 
     # Advanced settings
@@ -58,11 +60,11 @@ class MemoryConfig:
     def from_env(cls) -> "MemoryConfig":
         """Create configuration from environment variables."""
         return cls(
-            alert_threshold_mb=float(os.getenv("REER_MEMORY_ALERT_MB", 1000.0)),
-            critical_threshold_mb=float(os.getenv("REER_MEMORY_CRITICAL_MB", 2000.0)),
-            cleanup_threshold_mb=float(os.getenv("REER_MEMORY_CLEANUP_MB", 1500.0)),
+            alert_threshold_mb=float(os.getenv("REER_MEMORY_ALERT_MB", "1000.0")),
+            critical_threshold_mb=float(os.getenv("REER_MEMORY_CRITICAL_MB", "2000.0")),
+            cleanup_threshold_mb=float(os.getenv("REER_MEMORY_CLEANUP_MB", "1500.0")),
             monitoring_interval_seconds=float(
-                os.getenv("REER_MEMORY_MONITORING_INTERVAL", 30.0)
+                os.getenv("REER_MEMORY_MONITORING_INTERVAL", "30.0")
             ),
             monitoring_enabled=os.getenv(
                 "REER_MEMORY_MONITORING_ENABLED", "true"
@@ -79,7 +81,7 @@ class MemoryConfig:
             auto_cleanup_enabled=os.getenv("REER_MEMORY_AUTO_CLEANUP", "true").lower()
             == "true",
             cleanup_large_objects_threshold_mb=float(
-                os.getenv("REER_MEMORY_CLEANUP_THRESHOLD_MB", 10.0)
+                os.getenv("REER_MEMORY_CLEANUP_THRESHOLD_MB", "10.0")
             ),
             force_gc_on_cleanup=os.getenv("REER_MEMORY_FORCE_GC", "true").lower()
             == "true",
@@ -89,8 +91,10 @@ class MemoryConfig:
                 "REER_MEMORY_MODEL_UNLOAD", "false"
             ).lower()
             == "true",
-            model_memory_limit_mb=float(os.getenv("REER_MEMORY_MODEL_LIMIT_MB", 500.0)),
-            default_chunk_size=int(os.getenv("REER_MEMORY_CHUNK_SIZE", 8192)),
+            model_memory_limit_mb=float(
+                os.getenv("REER_MEMORY_MODEL_LIMIT_MB", "500.0")
+            ),
+            default_chunk_size=int(os.getenv("REER_MEMORY_CHUNK_SIZE", "8192")),
             streaming_enabled=os.getenv("REER_MEMORY_STREAMING", "true").lower()
             == "true",
             adaptive_chunk_sizing=os.getenv(
@@ -108,10 +112,11 @@ class MemoryConfig:
             save_memory_reports=os.getenv("REER_MEMORY_SAVE_REPORTS", "true").lower()
             == "true",
             report_directory=os.getenv(
-                "REER_MEMORY_REPORT_DIR", "/tmp/reer_memory_reports"
+                "REER_MEMORY_REPORT_DIR",
+                str(Path(tempfile.gettempdir()) / "reer_memory_reports"),
             ),
             report_retention_days=int(
-                os.getenv("REER_MEMORY_REPORT_RETENTION_DAYS", 7)
+                os.getenv("REER_MEMORY_REPORT_RETENTION_DAYS", "7")
             ),
             leak_detection_enabled=os.getenv(
                 "REER_MEMORY_LEAK_DETECTION", "true"
@@ -193,7 +198,6 @@ def get_memory_config() -> MemoryConfig:
     """Get the current memory configuration."""
     try:
         env_config.validate()
-        return env_config
     except ValueError as e:
         import logging
 
@@ -202,6 +206,8 @@ def get_memory_config() -> MemoryConfig:
         )
         default_config.validate()
         return default_config
+    else:
+        return env_config
 
 
 def apply_memory_config(config: MemoryConfig = None) -> None:

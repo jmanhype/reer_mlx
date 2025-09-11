@@ -4,7 +4,7 @@ import re
 
 
 def fix_utc_import(filepath):
-    with open(filepath, "r") as f:
+    with open(filepath) as f:
         content = f.read()
 
     # Replace UTC import pattern
@@ -21,8 +21,7 @@ def fix_utc_import(filepath):
 
         if all_parts:
             return f"from datetime import {', '.join(all_parts)}"
-        else:
-            return "from datetime import datetime"
+        return "from datetime import datetime"
 
     content = re.sub(pattern, replace_func, content)
 

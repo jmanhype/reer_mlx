@@ -187,7 +187,6 @@ async def _execute_pipeline(
     pipeline_table.add_column("Output", style="magenta")
 
     with Live(pipeline_table, refresh_per_second=1, console=console):
-
         # Stage 1: Data Collection
         if "collect" in stages:
             stage_start = time.time()
@@ -630,7 +629,7 @@ def _display_pipeline_results(results: dict[str, Any]):
 def status(
     output_dir: Path = typer.Option(
         Path("output"), "--output-dir", "-o", help="Output directory to check"
-    )
+    ),
 ):
     """Check status of pipeline execution."""
 

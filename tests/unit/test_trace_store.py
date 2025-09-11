@@ -5,8 +5,7 @@ Covers async/sync APIs, file locking, and error handling with mock file I/O.
 """
 
 import asyncio
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 import json
 from unittest.mock import mock_open, patch
 from uuid import UUID, uuid4
@@ -730,7 +729,7 @@ class TestREERTraceStore:
         temp_trace_file.write_text("\n".join(test_data) + "\n")
 
         # Query after January 1st
-        since_jan2 = datetime(2024, 1, 2, tzinfo=timezone.utc)
+        since_jan2 = datetime(2024, 1, 2, tzinfo=UTC)
         recent_traces = await trace_store.query_traces(since=since_jan2)
         assert len(recent_traces) == 1
         assert recent_traces[0]["timestamp"] == "2024-01-02T12:00:00+00:00"
@@ -754,7 +753,7 @@ class TestREERTraceStore:
         for i in range(3):
             trace = {
                 "id": str(uuid4()),
-                "timestamp": f"2024-01-0{i+1}T12:00:00+00:00",
+                "timestamp": f"2024-01-0{i + 1}T12:00:00+00:00",
                 "source_post_id": f"post_{i}",
                 "provider": "mlx::test",
                 "score": 0.8,

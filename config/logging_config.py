@@ -9,8 +9,7 @@ Provides centralized logging configuration with:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
-from datetime import timezone
+from datetime import UTC, datetime
 import json
 import logging
 import logging.config
@@ -78,9 +77,7 @@ class JSONFormatter(logging.Formatter):
     def format(self, record):
         # Base log entry
         log_entry = {
-            "timestamp": datetime.fromtimestamp(
-                record.created, tz=timezone.utc
-            ).isoformat(),
+            "timestamp": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

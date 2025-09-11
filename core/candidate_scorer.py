@@ -15,7 +15,7 @@ import numpy as np
 try:
     from mlx import nn
     import mlx.core as mx
-    from mlx_lm import generate, load
+    from mlx_lm import load
 
     MLX_AVAILABLE = True
 except ImportError:
@@ -24,6 +24,24 @@ except ImportError:
     nn = None
 
 from .exceptions import PerplexityError, ScoringError, ValidationError
+
+# Constants for thresholds and limits (avoid magic numbers)
+EMOJI_ASCII_MAX = 127
+OPTIMAL_LEN_MIN = 50
+OPTIMAL_LEN_MAX = 200
+MAX_POST_LEN = 280
+MIN_OK_LEN = 20
+MIN_WORDS_FOR_GRAMMAR = 3
+PUNCT_RATIO_HIGH = 0.1
+UPPER_RATIO_HIGH = 0.3
+SENT_LEN_STD_LOW = 2
+SENT_LEN_STD_HIGH = 10
+OVERLAP_LOW = 0.1
+OVERLAP_HIGH = 0.8
+MAX_PERPLEXITY = 1000.0
+MIN_COMPARE_CANDIDATES = 2
+TEXT_PREVIEW_LEN = 100
+EXCESSIVE_EMOJI_COUNT = 2
 
 
 @dataclass
@@ -97,7 +115,7 @@ class PerplexityCalculator:
             raise PerplexityError(
                 f"Failed to initialize MLX model {self.model_name}: {str(e)}",
                 original_error=e,
-            )
+            ) from e
 
     async def calculate_perplexity(self, text: str) -> float:
         """Calculate perplexity for given text.
@@ -150,7 +168,7 @@ class PerplexityCalculator:
                 f"Failed to calculate perplexity: {str(e)}",
                 details={"text_length": len(text), "model": self.model_name},
                 original_error=e,
-            )
+            ) from e
 
     async def calculate_batch_perplexity(self, texts: list[str]) -> list[float]:
         """Calculate perplexity for multiple texts.
@@ -224,7 +242,7 @@ class EngagementPredictor:
         features["call_to_action"] = min(cta_score / 2, 1.0)
 
         # Emoji usage (Unicode characters above ASCII range)
-        emoji_count = sum(1 for char in text if ord(char) > 127)
+        emoji_count = sum(1 for char in text if ord(char) > EMOJI_ASCII_MAX)
         features["emoji_usage"] = min(emoji_count / 3, 1.0)
 
         # URL presence
@@ -284,11 +302,14 @@ class EngagementPredictor:
         )  # Normalize to 1.0
 
         # Optimal length (for Twitter-like platforms)
-        if 50 <= char_count <= 200:
+        if OPTIMAL_LEN_MIN <= char_count <= OPTIMAL_LEN_MAX:
             features["optimal_length"] = 1.0
-        elif 20 <= char_count < 50 or 200 < char_count <= 280:
+        elif (
+            MIN_OK_LEN <= char_count < OPTIMAL_LEN_MIN
+            or OPTIMAL_LEN_MAX < char_count <= MAX_POST_LEN
+        ):
             features["optimal_length"] = 0.8
-        elif char_count < 20 or char_count > 280:
+        elif char_count < MIN_OK_LEN or char_count > MAX_POST_LEN:
             features["optimal_length"] = 0.3
         else:
             features["optimal_length"] = 0.5
@@ -357,7 +378,7 @@ class QualityAssessor:
         # Simple fluency metrics
         words = text.split()
 
-        if len(words) < 3:
+        if len(words) < MIN_WORDS_FOR_GRAMMAR:
             return 0.5
 
         # Check for repeated words
@@ -370,12 +391,12 @@ class QualityAssessor:
         # Penalize excessive punctuation
         punct_count = sum(1 for char in text if char in "!?.,;:")
         punct_ratio = punct_count / len(text)
-        if punct_ratio > 0.1:
+        if punct_ratio > PUNCT_RATIO_HIGH:
             grammar_score *= 0.8
 
         # Penalize ALL CAPS
         upper_ratio = sum(1 for char in text if char.isupper()) / len(text)
-        if upper_ratio > 0.3:
+        if upper_ratio > UPPER_RATIO_HIGH:
             grammar_score *= 0.7
 
         fluency = (repetition_penalty + grammar_score) / 2
@@ -397,7 +418,7 @@ class QualityAssessor:
         if len(lengths) > 1:
             length_std = np.std(lengths)
             # Moderate variation is good
-            if length_std < 2 or length_std > 10:
+            if length_std < SENT_LEN_STD_LOW or length_std > SENT_LEN_STD_HIGH:
                 coherence_score *= 0.9
 
         # Check for topic consistency (simple keyword overlap)
@@ -418,7 +439,7 @@ class QualityAssessor:
             if overlaps:
                 avg_overlap = np.mean(overlaps)
                 # Some overlap is good for coherence
-                if avg_overlap < 0.1 or avg_overlap > 0.8:
+                if avg_overlap < OVERLAP_LOW or avg_overlap > OVERLAP_HIGH:
                     coherence_score *= 0.8
 
         return min(max(coherence_score, 0.0), 1.0)
@@ -472,8 +493,8 @@ class QualityAssessor:
 
             if "professional" in brand_voice:
                 # Penalize excessive emojis or informal language
-                emoji_count = sum(1 for char in text if ord(char) > 127)
-                if emoji_count > 2:
+                emoji_count = sum(1 for char in text if ord(char) > EMOJI_ASCII_MAX)
+                if emoji_count > EXCESSIVE_EMOJI_COUNT:
                     professionalism_score *= 0.8
 
                 informal_words = {"lol", "omg", "wtf", "awesome", "cool"}
@@ -691,7 +712,7 @@ class REERCandidateScorer:
                     "text_length": len(candidate.text),
                 },
                 original_error=e,
-            )
+            ) from e
 
     async def score_candidates(
         self, candidates: list[ContentCandidate], sort_by_score: bool = True
@@ -731,7 +752,7 @@ class REERCandidateScorer:
         # We'll use a logarithmic normalization
         if perplexity <= 1.0:
             return 1.0
-        if perplexity >= 1000.0:
+        if perplexity >= MAX_PERPLEXITY:
             return 0.0
         # Log scale normalization
         log_perplexity = math.log(perplexity)
@@ -751,7 +772,7 @@ class REERCandidateScorer:
         Returns:
             Comparison analysis with rankings and insights
         """
-        if len(candidates) < 2:
+        if len(candidates) < MIN_COMPARE_CANDIDATES:
             raise ValidationError("Need at least 2 candidates for comparison")
 
         if comparison_criteria is None:
@@ -793,8 +814,8 @@ class REERCandidateScorer:
                     "candidate_id": candidate.candidate_id,
                     "score": getattr(metrics, criterion, 0.0),
                     "text_preview": (
-                        candidate.text[:100] + "..."
-                        if len(candidate.text) > 100
+                        candidate.text[:TEXT_PREVIEW_LEN] + "..."
+                        if len(candidate.text) > TEXT_PREVIEW_LEN
                         else candidate.text
                     ),
                 }
