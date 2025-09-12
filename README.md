@@ -6,17 +6,19 @@
 
 ## 🚀 What is REER?
 
-REER (Retrieval-Enhanced Evolutionary Refinement) is an advanced algorithm that optimizes AI-generated text through iterative trajectory search. It works by finding optimal "reasoning chains" between inputs and outputs, minimizing perplexity to create more natural, coherent text.
+REER (REverse-Engineered Reasoning) is a novel paradigm that works **backwards** from known high-quality outputs to computationally discover the latent, step-by-step reasoning process that could have produced them. Instead of building reasoning "forwards" through trial-and-error or imitation, REER reverse-engineers the deep thinking behind existing solutions.
 
 ```
 Input (x) → Reasoning Chain (z) → Output (y)
 ```
 
-The system iteratively optimizes `z` to minimize the perplexity of the entire sequence (x+z+y), resulting in:
-- More coherent responses
-- Better factual consistency
-- Improved logical flow
-- Natural language that "feels right"
+The system iteratively optimizes `z` by minimizing the perplexity of `y` conditioned on both `x` and `z`. A lower perplexity indicates that the reasoning trajectory provides a more coherent and effective plan, making the high-quality answer seem maximally probable and logical.
+
+Key benefits:
+- Discovers latent reasoning without costly distillation or RL
+- Works with existing high-quality outputs
+- Scalable, gradient-free approach
+- Produces step-by-step deep reasoning trajectories
 
 ## ✨ Key Features
 

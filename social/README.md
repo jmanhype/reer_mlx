@@ -83,6 +83,24 @@ Platform-specific content policy templates:
 - Legal compliance requirements
 - Crisis management protocols
 
+### T029: X Tweet Collection (`collectors/twscrape_collector.py`)
+
+TWScrape-based public tweet collector for prototyping and research.
+
+- Dependency: `pip install twscrape`
+- CLI: `python scripts/collect_x_tweets.py --help`
+- Example:
+
+```
+python scripts/collect_x_tweets.py search \
+  --query "ai productivity" --limit 300 --min-likes 200 \
+  --output data/raw/x_ai.jsonl
+```
+
+Notes:
+- For higher throughput, configure twscrape sessions (cookies/accounts) and pass `--session-db`.
+- Scraping may violate platform ToS; use the official API for compliant production pipelines.
+
 ## Usage Examples
 
 ### Basic Analytics Normalization

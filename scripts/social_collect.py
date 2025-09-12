@@ -7,6 +7,7 @@ Supports X (Twitter), Instagram, TikTok, and other social platforms.
 """
 
 import asyncio
+from datetime import UTC
 import json
 from pathlib import Path
 import sys
@@ -22,7 +23,14 @@ import typer
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from social.collectors import XAnalyticsNormalizer
+
+try:  # Optional import; fail gracefully if not installed
+    from social.collectors import TWScrapeCollector  # type: ignore
+
+    _HAS_TWSCRAPE = True
+except Exception:
+    TWScrapeCollector = None  # type: ignore
+    _HAS_TWSCRAPE = False
 
 app = typer.Typer(
     name="social-collect",
@@ -44,6 +52,25 @@ logger.add(
 def collect(
     platform: str = typer.Argument(
         ..., help="Platform to collect from (x, instagram, tiktok)"
+    ),
+    session_db: Path | None = typer.Option(
+        None,
+        "--session-db",
+        help="Path to twscrape session DB (SQLite). Enables logged-in crawling.",
+    ),
+    lang: str | None = typer.Option("en", "--lang", help="Language filter (e.g., en)"),
+    min_likes: int | None = typer.Option(
+        None, "--min-likes", help="Minimum likes threshold for search"
+    ),
+    include_retweets: bool = typer.Option(
+        False,
+        "--include-retweets/--no-include-retweets",
+        help="Include retweets in search",
+    ),
+    min_likes_per_hour: float | None = typer.Option(
+        None,
+        "--min-likes-per-hour",
+        help="Filter to tweets with at least this likes/hour (recency-adjusted)",
     ),
     output_dir: Path = typer.Option(
         Path("data/raw"),
@@ -77,6 +104,29 @@ def collect(
     ),
     output_format: str = typer.Option(
         "json", "--format", "-f", help="Output format (json, csv, parquet)"
+    ),
+    user: str | None = typer.Option(
+        None,
+        "--user",
+        help="Collect a specific user's timeline instead of keyword/hashtag search",
+    ),
+    include_replies: bool = typer.Option(
+        False,
+        "--include-replies/--no-include-replies",
+        help="Include replies when collecting a user's timeline",
+    ),
+    cache: bool = typer.Option(
+        True,
+        "--cache/--no-cache",
+        help="Enable simple cache/dedupe by tweet id at the output path",
+    ),
+    sort_by: str = typer.Option(
+        "likes_per_hour",
+        "--sort-by",
+        help=(
+            "Sort field for output: likes_per_hour, like_count, retweet_count, "
+            "reply_count, quote_count, created_at"
+        ),
     ),
     dry_run: bool = typer.Option(
         False,
@@ -124,6 +174,20 @@ def collect(
     params_table.add_row("Days Back", str(days_back))
     params_table.add_row("Output Format", output_format)
     params_table.add_row("Include Engagement", str(include_engagement))
+    if session_db:
+        params_table.add_row("Session DB", str(session_db))
+    if lang:
+        params_table.add_row("Language", lang)
+    if min_likes is not None:
+        params_table.add_row("Min Likes", str(min_likes))
+    params_table.add_row("Include Retweets", str(include_retweets))
+    if user:
+        params_table.add_row("User", user)
+        params_table.add_row("Include Replies", str(include_replies))
+    params_table.add_row("Cache", str(cache))
+    if min_likes_per_hour is not None:
+        params_table.add_row("Min Likes/Hour", str(min_likes_per_hour))
+    params_table.add_row("Sort By", sort_by)
 
     if hashtags:
         params_table.add_row("Hashtags", ", ".join(hashtags))
@@ -152,6 +216,15 @@ def collect(
                 days_back,
                 include_engagement,
                 output_format,
+                session_db,
+                lang,
+                min_likes,
+                include_retweets,
+                user,
+                include_replies,
+                cache,
+                min_likes_per_hour,
+                sort_by,
             )
         )
 
@@ -173,6 +246,15 @@ async def _collect_data(
     days_back: int,
     include_engagement: bool,
     output_format: str,
+    session_db: Path | None,
+    lang: str | None,
+    min_likes: int | None,
+    include_retweets: bool,
+    user: str | None,
+    include_replies: bool,
+    cache: bool,
+    min_likes_per_hour: float | None,
+    sort_by: str,
 ):
     """Perform the actual data collection."""
 
@@ -184,59 +266,321 @@ async def _collect_data(
     ) as progress:
         # Initialize collector based on platform
         if platform == "x":
-            XAnalyticsNormalizer()
-            task = progress.add_task("Collecting X/Twitter data...", total=None)
+            if not _HAS_TWSCRAPE:
+                progress.add_task(
+                    "twscrape not installed. Install with `pip install twscrape`.",
+                    total=None,
+                )
+                await asyncio.sleep(1)
+                return
+            task = progress.add_task(
+                "Collecting X/Twitter data via twscrape...", total=None
+            )
         else:
             # For now, we only have X collector implemented
             progress.add_task(f"Platform {platform} not yet implemented", total=None)
             await asyncio.sleep(1)
             return
 
-        # Simulate collection process
-        collected_data = []
+        # Collect using twscrape
+        collected_data: list[dict] = []
 
-        # Mock data collection for demonstration
-        for i in range(min(limit, 10)):  # Limit to 10 for demo
-            progress.update(task, description=f"Collecting post {i + 1}/{limit}...")
+        # Build a simple query from hashtags/keywords for the search endpoint.
+        def _build_query(
+            hashtags: list[str] | None,
+            keywords: list[str] | None,
+            default_lang: str | None,
+        ) -> str:
+            parts: list[str] = []
+            if keywords:
+                for kw in keywords:
+                    kw = kw.strip()
+                    if not kw:
+                        continue
+                    if " " in kw:
+                        parts.append(f'"{kw}"')
+                    else:
+                        parts.append(kw)
+            if hashtags:
+                for tag in hashtags:
+                    tag = tag.lstrip("#").strip()
+                    if tag:
+                        parts.append(f"#{tag}")
+            if parts:
+                return " ".join(parts)
+            # Fallback query to avoid empty search
+            return f"lang:{default_lang}" if default_lang else "lang:en"
 
-            # Simulate API delay
-            await asyncio.sleep(0.1)
+        query = _build_query(hashtags, keywords, lang)
 
-            # Mock post data
-            post_data = {
-                "id": f"post_{i + 1}",
-                "platform": platform,
-                "content": f"Sample post content {i + 1}",
-                "author": f"user_{i + 1}",
-                "timestamp": "2024-01-01T12:00:00Z",
-                "hashtags": hashtags[:2] if hashtags else [],
-                "engagement": (
-                    {"likes": i * 10, "shares": i * 2, "comments": i * 3}
-                    if include_engagement
-                    else {}
-                ),
-            }
-            collected_data.append(post_data)
+        collector = TWScrapeCollector(session_db=session_db)  # type: ignore
+        # Attempt to ensure sessions are logged in (if configured); ignore failures.
+        try:
+            await collector.ensure_logged_in()  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+        # Stream search results
+        from dataclasses import asdict
+
+        # Prepare cache: load existing ids if enabled
+        def _compute_output_file() -> Path:
+            base = f"{platform}_data"
+            if user:
+                safe_user = user.replace("/", "_")
+                base = f"{platform}_user_{safe_user}"
+            return output_dir / f"{base}.{output_format}"
+
+        output_file = _compute_output_file()
+
+        existing_ids: set[str] = set()
+        existing_records: list[dict] = []
+        if cache and output_file.exists():
+            try:
+                if output_format == "json":
+                    with open(output_file, encoding="utf-8") as f:
+                        existing_records = json.load(f)
+                    for r in existing_records:
+                        rid = str(r.get("id"))
+                        if rid:
+                            existing_ids.add(rid)
+                elif output_format == "csv":
+                    import pandas as pd
+
+                    df = pd.read_csv(output_file)
+                    if "id" in df.columns:
+                        existing_ids = set(df["id"].astype(str).tolist())
+                elif output_format == "parquet":
+                    import pandas as pd
+
+                    df = pd.read_parquet(output_file)
+                    if "id" in df.columns:
+                        existing_ids = set(df["id"].astype(str).tolist())
+            except Exception:
+                # If cache read fails, continue without cache
+                existing_ids = set()
+                existing_records = []
+
+        def _rec_to_dict(rec) -> dict:
+            d = asdict(rec)
+            # Convert datetime to ISO string for JSON compatibility
+            if isinstance(d.get("created_at"), (str, bytes)):
+                pass
+            else:
+                try:
+                    d["created_at"] = rec.created_at.isoformat()
+                except Exception:
+                    d["created_at"] = str(rec.created_at)
+            return d
+
+        idx = 0
+        if user:
+            async for rec in collector.user_tweets(  # type: ignore[attr-defined]
+                username=user,
+                limit=limit,
+                days_back=days_back,
+                include_replies=include_replies,
+                include_retweets=include_retweets,
+            ):
+                idx += 1
+                rid = str(rec.id)
+                if rid in existing_ids:
+                    continue
+                if idx % 10 == 0:
+                    progress.update(
+                        task,
+                        description=f"Collected {idx}/{limit} (user='{user}')",
+                    )
+                collected_data.append(_rec_to_dict(rec))
+        else:
+            async for rec in collector.search(  # type: ignore[attr-defined]
+                query=query,
+                limit=limit,
+                days_back=days_back,
+                lang=lang,
+                min_likes=min_likes,
+                include_retweets=include_retweets,
+            ):
+                idx += 1
+                rid = str(rec.id)
+                if rid in existing_ids:
+                    continue
+                if idx % 10 == 0:
+                    progress.update(
+                        task,
+                        description=f"Collected {idx}/{limit} (query='{query[:30]}...')",
+                    )
+                collected_data.append(_rec_to_dict(rec))
 
         # Save collected data
-        output_file = output_dir / f"{platform}_data.{output_format}"
-
+        # Merge with existing cache (for JSON) when enabled
         if output_format == "json":
-            with open(output_file, "w") as f:
-                json.dump(collected_data, f, indent=2)
+            all_records = (
+                (existing_records + collected_data)
+                if cache and existing_records
+                else collected_data
+            )
+
+            # Compute likes/hour for ranking/filtering
+            from datetime import datetime
+
+            def _parse_dt(s: str) -> datetime:
+                try:
+                    if s.endswith("Z"):
+                        s = s[:-1] + "+00:00"
+                    return datetime.fromisoformat(s)
+                except Exception:
+                    return datetime.now(UTC)
+
+            now = datetime.now(UTC)
+            MIN_AGE_HOURS = 0.1  # avoid division blow-ups for very fresh tweets
+
+            for r in all_records:
+                try:
+                    created_at = r.get("created_at")
+                    if isinstance(created_at, str):
+                        dt = _parse_dt(created_at)
+                    else:
+                        dt = now
+                    age_h = max((now - dt).total_seconds() / 3600.0, MIN_AGE_HOURS)
+                    likes = int(r.get("like_count", 0) or 0)
+                    r["likes_per_hour"] = round(likes / age_h, 4)
+                except Exception:
+                    r["likes_per_hour"] = 0.0
+
+            # Apply optional cutoff
+            if min_likes_per_hour is not None:
+                all_records = [
+                    r
+                    for r in all_records
+                    if r.get("likes_per_hour", 0.0) >= min_likes_per_hour
+                ]
+
+            # Dedupe by id while preserving order (existing first)
+            seen: set[str] = set()
+            merged: list[dict] = []
+            for r in all_records:
+                rid = str(r.get("id"))
+                if rid and rid not in seen:
+                    seen.add(rid)
+                    merged.append(r)
+
+            # Sort by selected field
+            def _sort_key(rec: dict):
+                if sort_by == "created_at":
+                    val = rec.get("created_at")
+                    try:
+                        s = str(val)
+                        if s.endswith("Z"):
+                            s = s[:-1] + "+00:00"
+                        from datetime import datetime
+
+                        return datetime.fromisoformat(s)
+                    except Exception:
+                        return ""
+                return rec.get(sort_by, 0)
+
+            merged.sort(key=_sort_key, reverse=True)
+
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(merged, f, ensure_ascii=False, indent=2)
         elif output_format == "csv":
             import pandas as pd
 
-            df = pd.json_normalize(collected_data)
+            if cache and output_file.exists():
+                try:
+                    df_existing = pd.read_csv(output_file)
+                except Exception:
+                    df_existing = None
+            else:
+                df_existing = None
+            df_new = pd.json_normalize(collected_data)
+            df = (
+                pd.concat([df_existing, df_new], ignore_index=True)
+                if df_existing is not None
+                else df_new
+            )
+            if "id" in df.columns:
+                df.drop_duplicates(subset=["id"], inplace=True, keep="first")
+
+            # Compute likes_per_hour
+            try:
+                import numpy as np
+            except Exception:
+                np = None
+            from datetime import datetime
+
+            def to_dt(val):
+                try:
+                    s = str(val)
+                    if s.endswith("Z"):
+                        s = s[:-1] + "+00:00"
+                    return datetime.fromisoformat(s)
+                except Exception:
+                    return datetime.now(UTC)
+
+            now = datetime.now(UTC)
+            ages_h = (now - df["created_at"].apply(to_dt)).dt.total_seconds() / 3600.0
+            ages_h = ages_h.clip(lower=0.1)
+            df["likes_per_hour"] = df["like_count"].fillna(0).astype(int) / ages_h
+
+            # Apply cutoff and rank
+            if min_likes_per_hour is not None:
+                df = df[df["likes_per_hour"] >= float(min_likes_per_hour)]
+            if sort_by not in df.columns:
+                # Fallback to likes_per_hour if requested column missing
+                sort_col = "likes_per_hour"
+            else:
+                sort_col = sort_by
+            df.sort_values(by=sort_col, ascending=False, inplace=True)
             df.to_csv(output_file, index=False)
         elif output_format == "parquet":
             import pandas as pd
 
-            df = pd.json_normalize(collected_data)
+            if cache and output_file.exists():
+                try:
+                    df_existing = pd.read_parquet(output_file)
+                except Exception:
+                    df_existing = None
+            else:
+                df_existing = None
+            df_new = pd.json_normalize(collected_data)
+            df = (
+                pd.concat([df_existing, df_new], ignore_index=True)
+                if df_existing is not None
+                else df_new
+            )
+            if "id" in df.columns:
+                df.drop_duplicates(subset=["id"], inplace=True, keep="first")
+            # Compute likes_per_hour
+            from datetime import datetime
+
+            def to_dt(val):
+                try:
+                    s = str(val)
+                    if s.endswith("Z"):
+                        s = s[:-1] + "+00:00"
+                    return datetime.fromisoformat(s)
+                except Exception:
+                    return datetime.now(UTC)
+
+            now = datetime.now(UTC)
+            ages_h = (now - df["created_at"].apply(to_dt)).dt.total_seconds() / 3600.0
+            ages_h = ages_h.clip(lower=0.1)
+            df["likes_per_hour"] = df["like_count"].fillna(0).astype(int) / ages_h
+
+            if min_likes_per_hour is not None:
+                df = df[df["likes_per_hour"] >= float(min_likes_per_hour)]
+            if sort_by not in df.columns:
+                sort_col = "likes_per_hour"
+            else:
+                sort_col = sort_by
+            df.sort_values(by=sort_col, ascending=False, inplace=True)
             df.to_parquet(output_file, index=False)
 
         progress.update(
-            task, description=f"Saved {len(collected_data)} posts to {output_file}"
+            task,
+            description=f"Saved {len(collected_data)} new posts to {output_file}",
         )
 
 

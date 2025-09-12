@@ -7,7 +7,7 @@ London School TDD with mock-first approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 from typing import Any
 from unittest.mock import AsyncMock, Mock
 from uuid import uuid4

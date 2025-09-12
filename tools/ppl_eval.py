@@ -61,10 +61,13 @@ def make_mlx_ppl_evaluator(
             # Simple case: fits in single window
             if len(full) <= window_size:
                 input_ids = mx.array(full)[None, :]
-                with mx.no_grad():
-                    outputs = model(input_ids)
-                    logits = outputs.logits if hasattr(outputs, "logits") else outputs
-                log_probs = mx.log_softmax(logits, axis=-1)
+                # MLX doesn't need no_grad context
+                outputs = model(input_ids)
+                logits = outputs.logits if hasattr(outputs, "logits") else outputs
+                # MLX uses nn.log_softmax or manual computation
+                from mlx import nn
+
+                log_probs = nn.log_softmax(logits, axis=-1)
 
                 # Compute log-likelihood only on y positions
                 target_tokens = input_ids[:, 1:]
@@ -106,10 +109,13 @@ def make_mlx_ppl_evaluator(
                 window_tokens = full[window_start:window_end]
                 input_ids = mx.array(window_tokens)[None, :]
 
-                with mx.no_grad():
-                    outputs = model(input_ids)
-                    logits = outputs.logits if hasattr(outputs, "logits") else outputs
-                log_probs = mx.log_softmax(logits, axis=-1)
+                # MLX doesn't need no_grad context
+                outputs = model(input_ids)
+                logits = outputs.logits if hasattr(outputs, "logits") else outputs
+                # MLX uses nn.log_softmax or manual computation
+                from mlx import nn
+
+                log_probs = nn.log_softmax(logits, axis=-1)
 
                 target_tokens = input_ids[:, 1:]
                 log_probs = log_probs[:, :-1, :]

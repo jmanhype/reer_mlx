@@ -259,4 +259,7 @@ docker-compose.override.yml
 memory/
 
 # Task Master AI
-.taskmaster/
+.taskmaster/accounts.txt
+cookies.json
+*.sqlite
+accounts.db
