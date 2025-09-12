@@ -32,8 +32,8 @@ import jsonlines
 
 # Third-party imports for schema validation
 try:
-    from jsonschema import Draft7Validator, FormatChecker, ValidationError, validate
-    from jsonschema.exceptions import RefResolutionError, SchemaError
+    from jsonschema import Draft7Validator, FormatChecker, ValidationError
+    from jsonschema.exceptions import SchemaError
 except ImportError:
     sys.exit(1)
 

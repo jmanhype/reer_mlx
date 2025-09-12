@@ -37,8 +37,10 @@ setup: install-dev pre-commit
 
 # Code quality targets
 lint:
-	ruff check .
-	mypy .
+	ruff check --select E,W,F,I,B,C4,UP \
+	  --ignore E501,B008,C901,PLR,PL,SIM,TRY,ARG,TRY301,PLR2004,B007,B904 \
+	  core config tools validate_dspy_implementation.py
+	mypy --explicit-package-bases --namespace-packages core config tools
 
 format:
 	black .

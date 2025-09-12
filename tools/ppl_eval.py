@@ -189,7 +189,7 @@ def make_together_dspy_ppl_evaluator(
                 tokens = max(1, len(y.split()))
                 avg_log_prob = ll / tokens
                 return float(math.exp(-avg_log_prob))
-            if isinstance(res, (int, float)):
+            if isinstance(res, (int | float)):
                 ll = float(res)
                 tokens = max(1, len(y.split()))
                 avg_log_prob = ll / tokens
