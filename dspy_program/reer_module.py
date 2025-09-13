@@ -199,16 +199,10 @@ class _RephraseSignature(dspy.Signature if DSPY_AVAILABLE else object):
 
 
 def propose_segment_variants(segment: str, k: int = 2) -> list[str]:
-    """Produce k rephrasings using MLX directly."""
+    """Produce k rephrasings using direct MLX generation."""
+    from .mlx_variants import propose_segment_variants_mlx
 
-    # Use MLX directly for variant generation - this works well!
-    try:
-        from .mlx_variants import propose_segment_variants_mlx
-
-        return propose_segment_variants_mlx(segment, k)
-    except ImportError as e:
-        logger.error(f"MLX variants module not available: {e}")
-        return []
+    return propose_segment_variants_mlx(segment, k)
 
 
 @dataclass

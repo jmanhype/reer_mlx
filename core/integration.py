@@ -10,7 +10,9 @@ This module provides centralized integration services connecting:
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+
+UTC = timezone.utc
 import json
 import logging
 from pathlib import Path

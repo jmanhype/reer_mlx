@@ -263,3 +263,4 @@ memory/
 cookies.json
 *.sqlite
 accounts.db
+.env

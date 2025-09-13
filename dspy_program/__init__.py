@@ -1,75 +1,36 @@
-"""REER × DSPy × MLX Social Posting Pack - DSPy Program Module
+"""REER × DSPy × MLX - Core DSPy Integration
 
-This module implements the core DSPy pipeline orchestration for social media content
-generation and optimization, integrating REER search, content scoring, and GEPA training.
+This module implements REER (Reverse-Engineered Reasoning) with DSPy and MLX integration
+for perplexity-guided reasoning optimization.
 
-Modules:
-    pipeline: Main DSPy pipeline orchestrator (T022)
-    reer_module: REER search wrapper with DSPy integration (T023)
-    evaluator: KPI evaluator for performance metrics (T024)
+Core Components:
+    reer_module: REER refinement processor and search
+    gepa_runner: GEPA optimization with DSPy
+    mlx_variants: Direct MLX variant generation
+    mlx_server_config: MLX server configuration for DSPy
 """
 
-from .evaluator import (
-    BenchmarkData,
-    BenchmarkManager,
-    KPICalculator,
-    KPIEvaluator,
-    MetricDefinition,
-    MetricLevel,
-    MetricResult,
-    MetricType,
-    PerformanceMetrics,
-)
-from .pipeline import (
-    ContentGenerationSignature,
-    ContentGeneratorModule,
-    ContentRefinementSignature,
-    ContentRequest,
-    ContentResult,
-    PipelineConfig,
-    PipelineFactory,
-    PipelineResult,
-    REERDSPyPipeline,
-)
 from .reer_module import (
-    ContentAnalysisModule,
-    MockREERSearchEngine,
-    QueryEnhancementModule,
+    REERConfig,
+    REERRefinementProcessor,
     REERSearchModule,
     REERSearchResult,
-    SearchContext,
-    SearchResult,
     SearchStrategy,
 )
 
+from .gepa_runner import (
+    run_gepa,
+    build_examples_from_traces,
+)
+
 __all__ = [
-    # Pipeline components
-    "REERDSPyPipeline",
-    "PipelineConfig",
-    "ContentRequest",
-    "ContentResult",
-    "PipelineResult",
-    "PipelineFactory",
-    "ContentGeneratorModule",
-    "ContentGenerationSignature",
-    "ContentRefinementSignature",
-    # REER search components
+    # REER core
+    "REERConfig",
+    "REERRefinementProcessor",
     "REERSearchModule",
     "REERSearchResult",
-    "SearchResult",
-    "SearchContext",
     "SearchStrategy",
-    "QueryEnhancementModule",
-    "ContentAnalysisModule",
-    "MockREERSearchEngine",
-    # KPI evaluation components
-    "KPIEvaluator",
-    "PerformanceMetrics",
-    "MetricResult",
-    "MetricDefinition",
-    "MetricType",
-    "MetricLevel",
-    "BenchmarkData",
-    "BenchmarkManager",
-    "KPICalculator",
+    # GEPA optimization
+    "run_gepa",
+    "build_examples_from_traces",
 ]

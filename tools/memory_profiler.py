@@ -8,7 +8,7 @@ import asyncio
 from collections.abc import Callable
 from contextlib import asynccontextmanager, contextmanager, suppress
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 import functools
 import gc
 import json
@@ -98,7 +98,7 @@ class MemoryTracker:
             stack_trace = "".join(traceback.format_stack())
 
         return MemorySnapshot(
-            timestamp=datetime.now(UTC),
+            timestamp=datetime.now(timezone.utc),
             process_memory_mb=memory_info.rss / 1024 / 1024,
             system_memory_mb=system_memory.total / 1024 / 1024,
             system_memory_percent=system_memory.percent,
@@ -507,7 +507,7 @@ def save_memory_report(file_path: Path, tracker: MemoryTracker | None = None) ->
     tracker = tracker or _memory_tracker
 
     report = {
-        "timestamp": datetime.now(UTC).isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "memory_stats": tracker.get_memory_stats(),
         "snapshots": [],
     }

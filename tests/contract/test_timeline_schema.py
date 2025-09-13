@@ -6,7 +6,9 @@ metadata. Following London School TDD with mock-first approach and behavior veri
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import timezone, datetime, timedelta
+
+UTC = timezone.utc
 import json
 from pathlib import Path
 from typing import Any

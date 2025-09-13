@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://reer-dspy-mlx/schemas/artifact.schema.json",
+  "title": "Social Artifact",
+  "description": "Publishable social content item with provenance, optional claims, and scores",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "id",
+    "topic",
+    "style",
+    "content",
+    "provenance"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique artifact identifier (UUID v4)"
+    },
+    "topic": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Content topic/theme"
+    },
+    "style": {
+      "type": "string",
+      "enum": ["professional", "technical", "community", "announcement"],
+      "description": "Writing style"
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["twitter", "linkedin", "instagram"],
+      "default": "twitter",
+      "description": "Target platform"
+    },
+    "content": {
+      "type": "string",
+      "maxLength": 280,
+      "description": "Post text content"
+    },
+    "conversation_seed": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A single, answerable question or prompt to seed replies"
+    },
+    "claims": {
+      "type": "array",
+      "description": "Explicit claims made in content (optional)",
+      "items": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "id": {"type": "string"},
+          "text": {"type": "string", "minLength": 1},
+          "category": {"type": "string"},
+          "severity": {"type": "string", "enum": ["low", "medium", "high"]}
+        },
+        "additionalProperties": false
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "description": "Evidence items supporting claims (optional)",
+      "items": {
+        "type": "object",
+        "required": ["claim_ref"],
+        "properties": {
+          "claim_ref": {"type": "string"},
+          "source_type": {"type": "string", "enum": ["trace", "benchmark", "audit", "url", "other"]},
+          "url": {"type": "string", "format": "uri"},
+          "hash": {"type": "string"},
+          "description": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "scores": {
+      "type": "object",
+      "description": "Scoring details (optional)",
+      "properties": {
+        "overall": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "perplexity": {"type": "number", "minimum": 0.0},
+        "virality": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "quality": {"type": "number", "minimum": 0.0, "maximum": 1.0}
+      },
+      "additionalProperties": true
+    },
+    "policy": {
+      "type": "object",
+      "description": "Policy evaluation results",
+      "properties": {
+        "policy_id": {"type": "string"},
+        "violations": {"type": "array", "items": {"type": "string"}},
+        "dedup_key": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Provenance and reproducibility information",
+      "required": ["timestamp", "seed", "models", "git_sha"],
+      "properties": {
+        "timestamp": {"type": "string", "format": "date-time"},
+        "seed": {"type": "integer"},
+        "run_id": {"type": "string"},
+        "template_id": {"type": "string"},
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provider", "model_id"],
+            "properties": {
+              "provider": {"type": "string"},
+              "model_id": {"type": "string"},
+              "version": {"type": "string"}
+            },
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "git_sha": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+        "trace_url": {"type": "string", "format": "uri"},
+        "config": {"type": "object"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+

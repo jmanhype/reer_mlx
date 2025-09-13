@@ -4,7 +4,9 @@ Tests that the schema validation utility integrates correctly with the existing
 contract test framework and provides consistent validation behavior.
 """
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+
+UTC = timezone.utc
 import json
 from pathlib import Path
 import subprocess

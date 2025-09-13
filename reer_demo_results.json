@@ -1,0 +1,17 @@
+{
+  "perplexity_demo": {
+    "good_lppl": 1.4878472222222223,
+    "poor_lppl": 2.0611979166666665
+  },
+  "refinement_demo": {
+    "initial_ppl": 1.7629716981132075,
+    "final_ppl": 1.7629716981132075,
+    "improvement": 0.0,
+    "steps": 0
+  },
+  "comparison_demo": {
+    "analytical": 3.1171875,
+    "experiential": 2.9149639423076925,
+    "theoretical": 3.1024639423076925
+  }
+}

@@ -5,7 +5,7 @@ This script demonstrates how to use the schema validation utility
 programmatically and via CLI commands.
 """
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 import json
 from pathlib import Path
 import subprocess
@@ -28,7 +28,7 @@ def demonstrate_programmatic_usage():
     # Create test data
     valid_trace = {
         "id": str(uuid4()),
-        "timestamp": datetime.now(UTC).isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "source_post_id": "example_post_123",
         "seed_params": {
             "topic": "Schema Validation",
@@ -94,7 +94,7 @@ def demonstrate_file_operations():
         valid_file = test_dir / "valid_trace.json"
         valid_data = {
             "id": str(uuid4()),
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "source_post_id": "file_example_001",
             "seed_params": {
                 "topic": "File Validation",

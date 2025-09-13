@@ -5,7 +5,9 @@ Covers async/sync APIs, file locking, and error handling with mock file I/O.
 """
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+
+UTC = timezone.utc
 import json
 from unittest.mock import mock_open, patch
 from uuid import UUID, uuid4

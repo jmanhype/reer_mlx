@@ -7,7 +7,9 @@ temporal analysis, and strategy clustering to identify successful approaches.
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import timezone, datetime, timedelta
+
+UTC = timezone.utc
 import json
 from pathlib import Path
 from typing import Any

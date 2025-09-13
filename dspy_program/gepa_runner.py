@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterable
+from pathlib import Path
+import json
 from typing import Any
 
 try:
@@ -88,7 +90,7 @@ def run_gepa(
     *,
     val_tasks: Iterable[dict[str, str]] | None = None,
     gen_model: str = "mlx-community/Llama-3.2-3B-Instruct-4bit",
-    reflection_model: str = "gpt-4o",
+    reflection_model: str = "gpt-5",
     auto: str | None = "light",
     max_full_evals: int | None = None,
     max_metric_calls: int | None = None,
@@ -96,6 +98,7 @@ def run_gepa(
     log_dir: str | None = None,
     use_cot: bool = True,
     use_perplexity: bool = False,
+    seed: int | None = None,
 ):
     """Compile an optimized DSPy program using GEPA.
 
@@ -152,6 +155,112 @@ def run_gepa(
         reflection_lm=reflection_lm,
         track_stats=track_stats,
         log_dir=log_dir,
+        seed=seed or 0,
     )
 
-    return gepa.compile(student, trainset=trainset, valset=valset or trainset)
+    compiled = gepa.compile(student, trainset=trainset, valset=valset or trainset)
+
+    class ProgramAdapter:
+        """Adapter to match pipeline ContentGeneratorModule interface.
+
+        Exposes call semantics compatible with pipeline:
+        - __call__(topic, platform, audience, style, requirements) -> obj with .content
+        - refine(original_content, feedback, target_metrics, platform_constraints) -> obj with .refined_content
+        - to_dict() -> forwards to underlying compiled.to_dict() if available
+        """
+
+        def __init__(self, prog):
+            self._prog = prog
+
+        def __call__(
+            self,
+            *,
+            topic: str,
+            platform: str,
+            audience: str,
+            style: str,
+            requirements: str,
+        ):
+            # Only topic/audience supported by ComposeSignature
+            pred = self._prog(topic=topic, audience=audience)
+            text = (
+                pred["post"]
+                if isinstance(pred, dict)
+                else getattr(pred, "post", str(pred))
+            )
+
+            class _Res:
+                def __init__(self, content: str):
+                    self.content = content
+                    self.reasoning = ""
+
+            return _Res(text)
+
+        def refine(
+            self,
+            *,
+            original_content: str,
+            feedback: str,
+            target_metrics: str,
+            platform_constraints: str,
+        ):
+            # Simple refinement: re-compose from hint in feedback; fallback to original
+            # In a full system, we'd add feedback into prompt; for now return original.
+            class _Res:
+                def __init__(self, refined: str):
+                    self.refined_content = refined
+
+            return _Res(original_content)
+
+        def to_dict(self):
+            fn = getattr(self._prog, "to_dict", None)
+            return fn() if callable(fn) else {"program": str(self._prog)}
+
+    return ProgramAdapter(compiled)
+
+
+def build_examples_from_traces(
+    traces_path: str | Path, max_examples: int = 200
+) -> list[dict[str, str]]:
+    """Construct lightweight train tasks from REER traces JSON/JSONL.
+
+    Extracts `seed_params.topic` and produces {"topic","audience"} pairs.
+    Audience defaults to "general".
+    """
+    p = Path(traces_path)
+    tasks: list[dict[str, str]] = []
+    if not p.exists():
+        return tasks
+
+    def _push(topic: str):
+        if topic:
+            tasks.append({"topic": topic, "audience": "general"})
+
+    if p.suffix.lower() == ".jsonl":
+        with p.open("r", encoding="utf-8") as f:
+            for i, line in enumerate(f, 1):
+                if len(tasks) >= max_examples:
+                    break
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                topic = (
+                    obj.get("seed_params", {}).get("topic") or obj.get("topic") or ""
+                )
+                _push(str(topic))
+    else:
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                for obj in data[:max_examples]:
+                    topic = (
+                        (obj or {}).get("seed_params", {}).get("topic")
+                        or obj.get("topic")
+                        or ""
+                    )
+                    _push(str(topic))
+        except Exception:
+            pass
+
+    return tasks

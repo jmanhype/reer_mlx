@@ -136,10 +136,9 @@ class PerplexityCalculator:
             # Convert to MLX array
             input_ids = mx.array(tokens)[None, :]  # Add batch dimension
 
-            # Get model outputs
-            with mx.no_grad():
-                outputs = self.model(input_ids)
-                logits = outputs.logits if hasattr(outputs, "logits") else outputs
+            # Get model outputs (MLX doesn't have no_grad, it's always no grad in inference)
+            outputs = self.model(input_ids)
+            logits = outputs.logits if hasattr(outputs, "logits") else outputs
 
             # Calculate log probabilities
             log_probs = mx.log_softmax(logits, axis=-1)
@@ -186,6 +185,100 @@ class PerplexityCalculator:
             perplexities.append(perplexity)
 
         return perplexities
+
+    async def calculate_conditional_log_perplexity(
+        self,
+        context: str,
+        thinking: str,
+        answer: str,
+        *,
+        template: str | None = None,
+    ) -> float:
+        """Compute log perplexity of `answer` tokens conditioned on `context` and `thinking`.
+
+        Builds a prompt of the form:
+            Context:\n{context}\n\nThinking:\n{thinking}\n\nAnswer:\n{answer}
+
+        and computes the average negative log probability (log perplexity)
+        over the answer token span only.
+
+        Returns:
+            log_perplexity (lower is better)
+        """
+        if not MLX_AVAILABLE:
+            raise PerplexityError("MLX is not available. Please install mlx-lm.")
+
+        if not self._initialized:
+            await self.initialize()
+
+        try:
+            prompt_template = (
+                template
+                or "Context:\n{context}\n\nThinking:\n{thinking}\n\nAnswer:\n{answer}"
+            )
+            # Build combined text and locate answer span
+            prefix_text = prompt_template.format(
+                context=context, thinking=thinking, answer=""
+            )
+            full_text = prefix_text + answer
+
+            # Tokenize
+            full_tokens = self.tokenizer.encode(full_text)
+            prefix_tokens = self.tokenizer.encode(prefix_text)
+
+            if len(full_tokens) <= len(prefix_tokens):
+                return 1000.0
+
+            # Create input ids
+            input_ids = mx.array(full_tokens)[None, :]
+
+            # Forward pass (MLX doesn't have no_grad, it's always no grad in inference)
+            outputs = self.model(input_ids)
+            logits = outputs.logits if hasattr(outputs, "logits") else outputs
+
+            # Log softmax over vocab
+            log_probs = nn.log_softmax(logits, axis=-1)
+
+            # Shift for next-token prediction
+            target_ids = input_ids[:, 1:]
+            log_probs = log_probs[:, :-1, :]
+
+            # Indices covering answer tokens within target_ids
+            # The first target position corresponds to token index 1 in input_ids.
+            # Answer tokens start at index len(prefix_tokens) in full_tokens.
+            start = len(prefix_tokens) - 1  # because target positions are shifted by 1
+            if start < 0:
+                start = 0
+            end = len(full_tokens) - 1  # inclusive last index in target positions
+            if end <= start:
+                return 1000.0
+
+            # Collect log probs for actual answer tokens
+            token_log_probs: list[float] = []
+            for i in range(start, end):
+                tok_id = int(target_ids[0, i].item())
+                lp = float(log_probs[0, i, tok_id].item())
+                token_log_probs.append(lp)
+
+            if not token_log_probs:
+                return 1000.0
+
+            # Average negative log prob across answer tokens
+            avg_logp = sum(token_log_probs) / len(token_log_probs)
+            log_perplexity = -avg_logp
+            return float(log_perplexity)
+
+        except Exception as e:
+            raise PerplexityError(
+                f"Failed conditional PPL: {str(e)}",
+                details={
+                    "context_len": len(context),
+                    "thinking_len": len(thinking),
+                    "answer_len": len(answer),
+                    "model": self.model_name,
+                },
+                original_error=e,
+            ) from e
 
 
 class EngagementPredictor:

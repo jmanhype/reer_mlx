@@ -1,0 +1,53 @@
+version: 1
+policy_id: default_twitter_v1
+platform: twitter
+
+constraints:
+  emoji_max:
+    professional: 1
+    technical: 1
+    community: 3
+    announcement: 2
+  hashtags_max:
+    professional: 2
+    technical: 2
+    community: 2
+    announcement: 2
+  forbid_placeholders: true
+  placeholder_patterns:
+    - "\\[link\\]"
+    - "\\[demo\\]"
+  forbidden_literals:
+    - "99.99% SLA"
+    - "RAFT consensus"
+    - "sub-second"
+  require_conversation_seed: true
+  dedup_threshold: 0.92  # cosine similarity on normalized text
+  max_repeated_phrase_len: 10
+  max_repeated_phrase_count: 1
+
+checks:
+  question_required: true           # require one clear question
+  question_max: 1                   # at most one question for clarity
+  evidence_required_for_claims: true
+
+scoring:
+  weights:
+    pattern_interrupt: 0.35         # novel opener, unexpected phrasing
+    checklist: 0.15                 # list or steps with clear value
+    micro_playbook: 0.25            # small how-to / specific tactic
+    single_question: 0.15           # ends with or includes one answerable question
+    clarity: 0.10                   # avoids hype, concrete nouns/verbs
+
+  penalties:
+    placeholder: 0.30
+    duplication: 0.25
+    hype_tokens: 0.20
+    excessive_emoji: 0.10
+    excessive_hashtags: 0.10
+
+notes:
+  - Policies are data-driven and platform-specific.
+  - Forbidden literals are examples; adjust per-domain.
+  - Claims should be explicit when present; attach evidence or strip claims.
+

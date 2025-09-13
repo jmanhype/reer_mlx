@@ -9,7 +9,9 @@ Provides centralized logging configuration with:
 """
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+
+UTC = timezone.utc
 import json
 import logging
 import logging.config

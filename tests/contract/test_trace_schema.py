@@ -7,7 +7,9 @@ with mock-first approach and behavior verification.
 This test suite MUST fail initially (RED phase) since implementations don't exist yet.
 """
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
+
+UTC = timezone.utc
 import json
 from pathlib import Path
 from typing import Any
