@@ -7,11 +7,18 @@ content discovery and context enrichment.
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 from enum import Enum
 import logging
 import time
 from typing import Any
+import random
+import re
+
+try:
+    from core.candidate_scorer import PerplexityCalculator
+except Exception:
+    PerplexityCalculator = None  # type: ignore
 
 try:
     import dspy
@@ -126,6 +133,190 @@ class REERSearchResult:
     context_summary: str = ""
     trends_identified: list[str] = field(default_factory=list)
     search_metadata: dict[str, Any] = field(default_factory=dict)
+
+
+# --- REER Thinking Utilities ---
+
+
+def breakdown_thinking(thinking: str) -> list[str]:
+    """Split a thinking plan into short segments.
+
+    Heuristic: split by newlines or sentence ends, keep 1–2 sentences per segment.
+    """
+    # Normalize newlines
+    text = thinking.strip()
+    if not text:
+        return []
+    # Prefer newline bullets
+    parts = [p.strip(" -•\t") for p in text.splitlines() if p.strip()]
+    if len(parts) >= 2:
+        return parts
+    # Fallback to sentence split
+    sents = re.split(r"(?<=[.!?])\s+", text)
+    segs: list[str] = []
+    buf: list[str] = []
+    for s in sents:
+        buf.append(s)
+        if len(" ".join(buf)) > 80 or len(buf) >= 2:
+            segs.append(" ".join(buf).strip())
+            buf = []
+    if buf:
+        segs.append(" ".join(buf).strip())
+    return [s for s in segs if s]
+
+
+_REPHRASE_DICT = {
+    "show": ["share", "outline", "demonstrate", "reveal", "present"],
+    "explain": ["break down", "clarify", "describe", "elaborate", "illustrate"],
+    "start": ["begin", "kick off", "initiate", "launch", "commence"],
+    "simple": ["straightforward", "concise", "basic", "clear", "direct"],
+    "example": ["sample", "case", "instance", "illustration", "demonstration"],
+    "value": ["benefit", "worth", "importance", "significance", "advantage"],
+    "summarize": ["outline", "recap", "synthesize", "condense", "abstract"],
+    "core": ["main", "central", "key", "primary", "essential"],
+    "end": ["finish", "conclude", "complete", "close", "wrap up"],
+    "hook": ["opener", "lead", "intro", "grabber", "attention-getter"],
+    "improve": ["enhance", "optimize", "refine", "boost", "strengthen"],
+    "identify": ["find", "discover", "recognize", "detect", "pinpoint"],
+    "apply": ["use", "implement", "employ", "utilize", "leverage"],
+    "measure": ["track", "assess", "evaluate", "quantify", "gauge"],
+    "focus": ["concentrate", "center", "target", "emphasize", "prioritize"],
+    "build": ["create", "develop", "construct", "establish", "form"],
+    "need": ["require", "must have", "should have", "demand", "necessitate"],
+    "work": ["function", "operate", "perform", "execute", "run"],
+    "make": ["create", "produce", "generate", "build", "develop"],
+    "use": ["utilize", "employ", "apply", "leverage", "implement"],
+}
+
+
+class _RephraseSignature(dspy.Signature if DSPY_AVAILABLE else object):
+    """Rephrase a line to keep intent but improve brevity and clarity."""
+
+    line = InputField(desc="Line to rephrase")
+    style = InputField(desc="Tone: concise, professional")
+    rephrase1 = OutputField(desc="Rephrased option 1 (<= 80 chars)")
+    rephrase2 = OutputField(desc="Rephrased option 2 (<= 80 chars)")
+
+
+def propose_segment_variants(segment: str, k: int = 2) -> list[str]:
+    """Produce k rephrasings using MLX directly."""
+
+    # Use MLX directly for variant generation - this works well!
+    try:
+        from .mlx_variants import propose_segment_variants_mlx
+
+        return propose_segment_variants_mlx(segment, k)
+    except ImportError as e:
+        logger.error(f"MLX variants module not available: {e}")
+        return []
+
+
+@dataclass
+class REERConfig:
+    stop_thresh: float = 0.25
+    max_steps: int = 5
+    num_expansion: int = 2
+    ppl_model_id: str = "mlx-community/Llama-3.2-3B-Instruct-4bit"
+
+
+class REERRefinementProcessor:
+    """Iterative local search over thinking steps (z) minimizing log-PPL(y|x,z)."""
+
+    def __init__(self, config: REERConfig):
+        self.config = config
+        self.ppl = (
+            PerplexityCalculator(model_name=config.ppl_model_id)
+            if PerplexityCalculator
+            else None
+        )
+        self._initialized = False
+
+    async def initialize(self) -> None:
+        if self._initialized:
+            return
+        if self.ppl is None:
+            raise ValidationError("PerplexityCalculator unavailable")
+        await self.ppl.initialize()
+        self._initialized = True
+
+    async def compute_log_ppl(self, x: str, z: str, y: str) -> float:
+        await self.initialize()
+        return await self.ppl.calculate_conditional_log_perplexity(x, z, y)
+
+    async def refine(self, x: str, z: str, y: str) -> dict[str, Any]:
+        """Run REER refinement returning details and best thinking plan.
+
+        Returns dict with keys: z_init, z_best, ppl_init, ppl_best, steps_taken, candidates
+        """
+        await self.initialize()
+        segments = breakdown_thinking(z)
+        z_current = z
+        ppl_init = await self.compute_log_ppl(x, z_current, y)
+        ppl_current = ppl_init
+
+        # Log initial perplexity
+        logger.info(
+            f"Initial log-PPL: {ppl_init:.3f}, stop threshold: {self.config.stop_thresh}"
+        )
+
+        # Don't stop immediately - at least try to refine once
+        # Note: Lower perplexity is better
+
+        steps_taken = 0
+        all_candidates: list[dict[str, Any]] = []
+        for idx in range(min(self.config.max_steps, len(segments))):
+            base_segments = breakdown_thinking(z_current)
+            if not base_segments:
+                break
+            target_idx = idx % len(base_segments)
+            seg = base_segments[target_idx]
+            proposals = propose_segment_variants(seg, self.config.num_expansion)
+            logger.debug(
+                f"Step {idx}: Generated {len(proposals)} variants for segment {target_idx}"
+            )
+            best_local = {"ppl": float("inf"), "z": z_current}
+            local_cands = []
+            for p in proposals:
+                new_segments = base_segments[:]
+                new_segments[target_idx] = p
+                z_new = "\n".join(new_segments)
+                ppl_new = await self.compute_log_ppl(x, z_new, y)
+                local_cands.append(
+                    {"segment_idx": target_idx, "candidate": p, "ppl": ppl_new}
+                )
+                if ppl_new < best_local["ppl"]:
+                    best_local = {"ppl": ppl_new, "z": z_new}
+            all_candidates.extend(local_cands)
+            # Accept if improved
+            if best_local["ppl"] < ppl_current:
+                improvement = ppl_current - best_local["ppl"]
+                logger.info(
+                    f"Step {idx}: Improved! PPL: {ppl_current:.3f} -> {best_local['ppl']:.3f} (delta: {improvement:.3f})"
+                )
+                z_current = best_local["z"]
+                ppl_current = best_local["ppl"]
+                steps_taken += 1
+                if ppl_current < self.config.stop_thresh:
+                    logger.info(
+                        f"Reached stop threshold {self.config.stop_thresh}, stopping refinement"
+                    )
+                    break
+            else:
+                # No improvement, but continue trying other segments
+                logger.debug(
+                    f"Step {idx}: No improvement (best: {best_local['ppl']:.3f} vs current: {ppl_current:.3f})"
+                )
+                pass
+
+        return {
+            "z_init": z,
+            "z_best": z_current,
+            "ppl_init": ppl_init,
+            "ppl_best": ppl_current,
+            "steps_taken": steps_taken,
+            "candidates": all_candidates,
+        }
+
     success: bool = True
     error_message: str | None = None
 
@@ -327,7 +518,7 @@ class MockREERSearchEngine:
                 source=f"mock_source_{i}",
                 platform=context.platform,
                 author=f"user_{i}",
-                timestamp=datetime.now(UTC),
+                timestamp=datetime.now(timezone.utc),
                 engagement_metrics={
                     "likes": (i + 1) * 50,
                     "shares": (i + 1) * 10,
@@ -352,7 +543,7 @@ class MockREERSearchEngine:
                 "platform": context.platform,
                 "strategy": context.strategy.value,
                 "results_count": len(results),
-                "timestamp": datetime.now(UTC).isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -559,7 +750,7 @@ class REERSearchModule:
 
             trace_data = {
                 "id": f"search_{search_id}",
-                "timestamp": datetime.now(UTC).isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "source_post_id": search_id,
                 "seed_params": seed_params,
                 "score": (
